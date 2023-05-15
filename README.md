@@ -1,8 +1,8 @@
 <div align="center">
 
-	<h1>OCRC</h1>
+<h1>OCRC</h1>
 
-	AI for <b>O</b>ptical <b>C</b>haracter <b>R</b>ecognition (<b>OCR</b>) writed in <b>C</b>.
+AI for <b>O</b>ptical <b>C</b>haracter <b>R</b>ecognition (<b>OCR</b>) writed in <b>C</b>.
 
 </div>
 
