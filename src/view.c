@@ -21,6 +21,7 @@
 #include <dirent.h>
 
 struct {
+	unsigned rec_dirs : 1;
 	unsigned read_dirs : 1;
 	unsigned all_prev : 1;
 	unsigned histogram : 1;
@@ -45,14 +46,12 @@ char cwd[PATH_MAX];
 main(argc, argv)
 char *argv[];
 {
-	void read_img();
+	void rec_read_file();
 	char **files, *c;
-	int i, j, n, end;
-	struct stat filestat;
-	struct dirent **files_in_dir;
+	int i, end;
 
 	if (argc < 2) {
-		puts("Usage: view -a -d -v image");
+		puts("Usage: view -a -d -v -R image");
 		return 1;
 	}
 	files = malloc(sizeof(char*) * (argc-1));
@@ -67,18 +66,21 @@ char *argv[];
 				case 'd':
 					flags.read_dirs = 1;
 					break;
+				case 'R':
+					flags.read_dirs = flags.rec_dirs = 1;
+					break;
+				case 'v':
+					flags.verbose = 1;
+					break;
 				case 'h':
 					flags.histogram = 1;
 					break;
 				case 'o':
 					flags.write_view = 1;
 					break;
-				case 'v':
-					flags.verbose = 1;
-					break;
 				default:
 					printf("view: illegal option %c\n", *c);
-					puts("Usage: view -a -d -v image");
+					puts("Usage: view -a -d -v -R image");
 					return 2;
 				}
 		else
@@ -89,35 +91,52 @@ char *argv[];
 		return 8;
 	}
 	load_weights(0);
-	for (i=0; i < end; i++) {
-		if (!flags.read_dirs) {
-			read_img(files[i], 0);
-			continue;
-		}
-		if (!stat(files[i], &filestat)) {
-			if (S_ISDIR(filestat.st_mode)) {
-				if ((n = scandir(files[i], &files_in_dir, without_points_dirs, alphasort)) < 0)
-					perror("scandir");
-				else {
-					printf("%s:\n", files[i]);
-					chdir(files[i]);
-					for (j=0; j < n; j++) {
-						read_img(files_in_dir[j]->d_name, 1);
-						free(files_in_dir[j]);
-					}
-					free(files_in_dir);
-					chdir(cwd);
-				}
-			} else 
-				read_img(files[i], 0);
-		} else
-			fprintf(stderr, "Failed to stat %s\n", files[i]);
-	}
+	for (i=0; i < end; i++)
+		rec_read_file(files[i], cwd, 0);
 }
 
 #define ALIGN  \
 	for (i=0; i < level; i++) \
 		putchar('\t');
+
+void rec_read_file(name, prev_wd, level)
+char name[], prev_wd[];
+{
+	void read_img();
+	struct dirent **files_in_dir;
+	struct stat filestat;
+	int i, n;
+
+	if (!flags.read_dirs) {
+		read_img(name, level);
+		return;
+	}
+	if (!stat(name, &filestat)) {
+		if (S_ISDIR(filestat.st_mode)) {
+			if ((n = scandir(name, &files_in_dir, without_points_dirs, alphasort)) < 0)
+				perror("scandir");
+			else {
+				ALIGN
+				printf("%s:\n", name);
+				chdir(name);
+				for (i=0; i < n; i++) {
+					if (flags.rec_dirs)
+						rec_read_file(files_in_dir[i]->d_name, "..", level+1);
+					else if (!stat(files_in_dir[i]->d_name, &filestat)) {
+						if (S_ISREG(filestat.st_mode))
+							read_img(files_in_dir[i]->d_name, level+1);
+					} else
+						fprintf(stderr, "Failed to stat %s\n", files_in_dir[i]->d_name);
+					free(files_in_dir[i]);
+				}
+				free(files_in_dir);
+				chdir(prev_wd);
+			}
+		} else 
+			read_img(name, level);
+	} else
+		fprintf(stderr, "Failed to stat %s\n", name);
+}
 
 #define MAP_CLASS(id) (id > 9? id - 10 + 'A' : id + '0')
 
