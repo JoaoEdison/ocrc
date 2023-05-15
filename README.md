@@ -18,7 +18,7 @@ Is a program that trains an artificial neural network based on a set of images, 
 
 ## Compiling
 
-Run make in `src` folder. You will get three executable codes:
+Run makefile in `src` folder. You will get three executable codes:
 
 * *init_net.out*, the program that generate the raw neural network.
 
