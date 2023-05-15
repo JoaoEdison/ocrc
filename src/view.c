@@ -25,6 +25,7 @@ struct {
 	unsigned all_prev : 1;
 	unsigned histogram : 1;
 	unsigned write_view : 1;
+	unsigned verbose : 1;
 } flags;
 
 cmp_strings(x, y)
@@ -51,7 +52,7 @@ char *argv[];
 	struct dirent **files_in_dir;
 
 	if (argc < 2) {
-		puts("Usage: view -d -a -h image");
+		puts("Usage: view -a -d -v image");
 		return 1;
 	}
 	files = malloc(sizeof(char*) * (argc-1));
@@ -72,9 +73,12 @@ char *argv[];
 				case 'o':
 					flags.write_view = 1;
 					break;
+				case 'v':
+					flags.verbose = 1;
+					break;
 				default:
 					printf("view: illegal option %c\n", *c);
-					puts("Usage: view -d -a -h image");
+					puts("Usage: view -a -d -v image");
 					return 2;
 				}
 		else
@@ -137,7 +141,7 @@ char name[];
 	int error, i, j;
 	unsigned char class;
 
-	if ((error = read_png_file(name, &img, 0))) {
+	if ((error = read_png_file(name, &img, flags.verbose))) {
 		fprintf(stderr, "Error: %d. Cannot read file: %s\n", error, name);
 		return;
 	}

@@ -10,6 +10,10 @@ AI for <b>O</b>ptical <b>C</b>haracter <b>R</b>ecognition (<b>OCR</b>) writed in
 
 Is a program that trains an artificial neural network based on a set of images, subsequently recognizes new images provided to the network.
 
+It is only possible to read 128x128 png images, grayscale or pallete types.
+
+The `weights` file contains the weights and biases of the network, which have already been trained for recognition on [Chars74K](http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/) EnglishFnt dataset, more specifically on the first half of the first 36 samples.
+
 ## Requirements
 
 * [libpng](http://www.libpng.org) >= 1.6.37
