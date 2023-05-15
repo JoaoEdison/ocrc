@@ -21,6 +21,7 @@
 #include <dirent.h>
 
 struct {
+	unsigned view : 1;
 	unsigned rec_dirs : 1;
 	unsigned read_dirs : 1;
 	unsigned all_prev : 1;
@@ -43,6 +44,10 @@ struct dirent *f;
 
 char cwd[PATH_MAX];
 
+unsigned *histogram;
+
+#define MAP_CLASS(id) (id > 9? id - 10 + 'A' : id + '0')
+
 main(argc, argv)
 char *argv[];
 {
@@ -56,6 +61,7 @@ char *argv[];
 	}
 	files = malloc(sizeof(char*) * (argc-1));
 	end = 0;
+	flags.view = 1;
 	while (--argc)
 		if ((*++argv)[0] == '-')
 			for (c=argv[0]+1; *c; c++)
@@ -63,15 +69,16 @@ char *argv[];
 				case 'a':
 					flags.all_prev = 1;
 					break;
+				case 'R':
+					flags.rec_dirs = 1;
 				case 'd':
 					flags.read_dirs = 1;
-					break;
-				case 'R':
-					flags.read_dirs = flags.rec_dirs = 1;
 					break;
 				case 'v':
 					flags.verbose = 1;
 					break;
+				case 'H':
+					flags.view = 0;
 				case 'h':
 					flags.histogram = 1;
 					break;
@@ -90,9 +97,17 @@ char *argv[];
 		perror("[getcwd]");
 		return 8;
 	}
+	if (flags.histogram) {
+		histogram = malloc(sizeof(unsigned) * MAX_CLASSES);
+		for (i=0; i < MAX_CLASSES; i++)
+			histogram[i] = 0;
+	}
 	load_weights(0);
 	for (i=0; i < end; i++)
 		rec_read_file(files[i], cwd, 0);
+	if (flags.histogram)
+		for (i=0; i < MAX_CLASSES; i++)
+			printf("%c %hd\n", MAP_CLASS(i), histogram[i]);
 }
 
 #define ALIGN  \
@@ -116,8 +131,10 @@ char name[], prev_wd[];
 			if ((n = scandir(name, &files_in_dir, without_points_dirs, alphasort)) < 0)
 				perror("scandir");
 			else {
-				ALIGN
-				printf("%s:\n", name);
+				if (flags.view) {
+					ALIGN
+					printf("%s:\n", name);
+				}
 				chdir(name);
 				for (i=0; i < n; i++) {
 					if (flags.rec_dirs)
@@ -137,8 +154,6 @@ char name[], prev_wd[];
 	} else
 		fprintf(stderr, "Failed to stat %s\n", name);
 }
-
-#define MAP_CLASS(id) (id > 9? id - 10 + 'A' : id + '0')
 
 struct map_prob {
 	char class;
@@ -166,17 +181,21 @@ char name[];
 	}
 	run(img);
 	hit(NULL, &class, &pred);
-	ALIGN
-	printf("%s: %c -> %.2f\n", name, MAP_CLASS(class), pred);
-	if (flags.all_prev) {
-		for (j=0; j < MAX_CLASSES; j++) {
-			probs[j].class = MAP_CLASS(j);
-			probs[j].vpred = network_output[j];
-		}
-		qsort(probs, MAX_CLASSES, sizeof(struct map_prob), cmp_floats);
-		for (j=0; j < MAX_CLASSES; j++) {
-			ALIGN
-			printf("\t%f -> %c\n", probs[j].vpred, probs[j].class);
+	if (flags.histogram)
+		histogram[class]++;
+	if (flags.view) {
+		ALIGN
+		printf("%s: %c -> %.2f\n", name, MAP_CLASS(class), pred);
+		if (flags.all_prev) {
+			for (j=0; j < MAX_CLASSES; j++) {
+				probs[j].class = MAP_CLASS(j);
+				probs[j].vpred = network_output[j];
+			}
+			qsort(probs, MAX_CLASSES, sizeof(struct map_prob), cmp_floats);
+			for (j=0; j < MAX_CLASSES; j++) {
+				ALIGN
+				printf("\t%f -> %c\n", probs[j].vpred, probs[j].class);
+			}
 		}
 	}
 }
