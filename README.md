@@ -26,7 +26,7 @@ Run makefile in `src` folder. You will get three executable codes:
 
 * *view.out*, one program to see the results.
 
-These programs look for the **weights** file in the current working directory to save and load the neural network.
+These programs look for the `weights` file in the current working directory to save and load the neural network.
 
 ## License
 
