@@ -59,7 +59,7 @@ char *argv[];
 	int i, end;
 
 	if (argc < 2) {
-		puts("Usage: view -a -d -v -R image");
+		puts("Usage: view -a -d -h -o -v -R -H image");
 		return 1;
 	}
 	files = malloc(sizeof(char*) * (argc-1));
@@ -77,9 +77,6 @@ char *argv[];
 				case 'd':
 					flags.read_dirs = 1;
 					break;
-				case 'v':
-					flags.verbose = 1;
-					break;
 				case 'H':
 					flags.view = 0;
 				case 'h':
@@ -88,9 +85,12 @@ char *argv[];
 				case 'o':
 					flags.write_view = 1;
 					break;
+				case 'v':
+					flags.verbose = 1;
+					break;
 				default:
 					printf("view: illegal option %c\n", *c);
-					puts("Usage: view -a -d -v -R image");
+					puts("Usage: view -a -d -h -o -v -R -H image");
 					return 2;
 				}
 		else
