@@ -1,5 +1,5 @@
 /*
- OCRC, a AI for optical character recognition writed in C
+ OCRC, a AI for optical character recognition written in C
  Copyright (C) 2023-2023 João Edison Roso Manica
 
  OCRC is free software: you can redistribute it and/or modify
