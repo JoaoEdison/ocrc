@@ -1,5 +1,5 @@
 /*
- OCRC, a AI for optical character recognition writed in C
+ OCRC, a AI for optical character recognition written in C
  Copyright (C) 2023-2023 João Edison Roso Manica
 
  OCRC is free software: you can redistribute it and/or modify
@@ -17,8 +17,23 @@
 */
 
 #include "neural_img.h"
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <errno.h>
+
+cmp_strings(x, y)
+void *x, *y;
+{
+	return strcmp(*(char**)x, *(char**)y);
+}
+without_points_dirs(f)
+struct dirent *f;
+{
+	return strcmp(f->d_name, ".") && strcmp(f->d_name, "..");
+}
 
 struct {
 	unsigned view : 1;
@@ -30,21 +45,8 @@ struct {
 	unsigned verbose : 1;
 } flags;
 
-cmp_strings(x, y)
-void *x, *y;
-{
-	return strcmp(*(char**)x, *(char**)y);
-}
-
-without_points_dirs(f)
-struct dirent *f;
-{
-	return strcmp(f->d_name, ".") && strcmp(f->d_name, "..");
-}
-
 char cwd[PATH_MAX];
-
-unsigned *histogram;
+unsigned *histogram, count;
 
 #define MAP_CLASS(id) (id > 9? id - 10 + 'A' : id + '0')
 
@@ -52,6 +54,7 @@ main(argc, argv)
 char *argv[];
 {
 	void rec_read_file();
+	struct stat st;
 	char **files, *c;
 	int i, end;
 
@@ -102,8 +105,13 @@ char *argv[];
 		for (i=0; i < MAX_CLASSES; i++)
 			histogram[i] = 0;
 	}
+	if (flags.write_view && stat("views_output", &st))
+		if (mkdir("views_output", 0777)) {
+			fprintf(stderr, "Failed to create directory views_output: error code: %d\n", errno);
+			return 9;
+		}
 	load_weights(0);
-	for (i=0; i < end; i++)
+	for (count=i=0; i < end; i++)
 		rec_read_file(files[i], cwd, 0);
 	if (flags.histogram)
 		for (i=0; i < MAX_CLASSES; i++)
@@ -172,12 +180,24 @@ char name[];
 	void write_png();
 	static float img[INPUT_QTT];
 	float pred;
-	int error, i, j;
+	int error, i, j, cn;
 	unsigned char class;
+	char view_name[PATH_MAX+NAME_MAX];
 
 	if ((error = read_png_file(name, &img, flags.verbose))) {
 		fprintf(stderr, "Error: %d. Cannot read file: %s\n", error, name);
 		return;
+	}
+	if (flags.write_view) {
+		count++;
+		cn = sprintf(view_name, "%s/views_output/%03dv_", cwd, count);
+		for (j=i=0; name[i]; i++)
+			if (name[i] == '/')
+				j=i+1;
+		cn += snprintf(view_name+cn, NAME_MAX-cn, "%s", name+j);
+		if (cn > NAME_MAX)
+			sprintf(view_name+NAME_MAX-5, ".png");
+		write_png(img, view_name);
 	}
 	run(img);
 	hit(NULL, &class, &pred);
@@ -198,4 +218,34 @@ char name[];
 			}
 		}
 	}
+}
+
+void write_png(img, name)
+float img[];
+char name[];
+{
+        FILE *fp;
+        png_structp png;
+        png_infop info;
+        png_bytepp rows;
+        int i, j;
+	
+        fp = fopen(name, "wb");
+        png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+        info = png_create_info_struct(png);
+        png_init_io(png, fp);
+        png_set_IHDR(png, info, DIM_IMG, DIM_IMG, 8, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_ADAM7, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+        png_write_info(png, info);
+        rows = (png_bytepp) malloc(sizeof(png_bytep) * DIM_IMG);
+        for (i=0; i < DIM_IMG; i++)
+                rows[i] = (png_bytep) malloc(DIM_IMG * 4);
+        for (i=0; i < DIM_IMG; i++)
+                for (j=0; j < DIM_IMG; j++)
+                        rows[i][j] = (png_byte) (img[i * DIM_IMG + j] * 255);
+        png_write_image(png, rows);
+        png_write_end(png, NULL);
+        for (i=0; i < DIM_IMG; i++)
+                free(rows[i]);
+	free(rows);
+        fclose(fp);
 }

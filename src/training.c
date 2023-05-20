@@ -1,5 +1,5 @@
 /*
- OCRC, a AI for optical character recognition writed in C
+ OCRC, a AI for optical character recognition written in C
  Copyright (C) 2023-2023 João Edison Roso Manica
 
  OCRC is free software: you can redistribute it and/or modify
@@ -74,7 +74,7 @@ struct node views[];
 	DIR *dirp;
 	struct dirent *file;
 	int i, j, c;
-	char buf[MAX_CLASSES][MAXNAMLEN];
+	char buf[MAX_CLASSES][NAME_MAX];
 	struct node *ptrnode;
 	char first;
 	
@@ -87,7 +87,7 @@ struct node views[];
 			buf[i][j] = '\0';
 			i++;
 			j=0;
-		} else if (j < MAXNAMLEN) {
+		} else if (j < NAME_MAX) {
 			buf[i][j++] = c;
 		} else {
 			buf[i][j-1] = '\0';
