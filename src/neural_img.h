@@ -40,7 +40,7 @@ struct create_network {
 
 float *network_output;
 
-int read_png_file(char[], float (*)[INPUT_QTT], int);
+int read_png_file(char[], float *, int);
 float hit(float[], unsigned char*, float*);
 float cross_entropy(float[]);
 void init_net_topology(struct create_network[], int, int);

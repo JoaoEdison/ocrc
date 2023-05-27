@@ -94,11 +94,8 @@ char *argv[];
 		perror("[main] getcwd");
 		return 3;
 	}
-	if (flags.histogram) {
-		histogram = malloc(sizeof(unsigned) * MAX_CLASSES);
-		for (i=0; i < MAX_CLASSES; i++)
-			histogram[i] = 0;
-	}
+	if (flags.histogram)
+		histogram = calloc(MAX_CLASSES, sizeof(unsigned));
 	if (flags.write_view && stat("views_output", &st))
 		if (mkdir("views_output", 0777)) {
 			perror("[main] mkdir");
@@ -187,7 +184,7 @@ char name[];
 	int error, i, j, cn;
 	unsigned char class;
 
-	if ((error = read_png_file(name, &img, flags.verbose))) {
+	if ((error = read_png_file(name, img, flags.verbose))) {
 		fprintf(stderr, "[read_img] Error: %d. Cannot read file: %s\n", error, name);
 		return;
 	}
@@ -233,8 +230,8 @@ char name[];
         png_bytepp rows;
         int i, j;
 	
-	if (!(fp = fopen(name, "rb"))) {
-		fprintf(stderr, "[write_png] File %s could not be opened for reading\n", name);
+	if (!(fp = fopen(name, "wb"))) {
+		fprintf(stderr, "[write_png] File %s could not be opened for writing\n", name);
 		return;
 	}
         png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);

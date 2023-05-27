@@ -40,8 +40,14 @@ struct {
 	unsigned char back_on, num_nets;
 } bignet;
 
+
 #define ACTIVATION_FN(X) tanh(X)
 #define DERIVATIVE_ACTIVATION_FN(Z) (1 - powf(tanh(Z), 2))
+
+/*
+#define ACTIVATION_FN(X) (1 / (1 + exp(-X)))
+#define DERIVATIVE_ACTIVATION_FN(Z) (ACTIVATION_FN(Z) * (1 - ACTIVATION_FN(Z))) 
+*/
 
 void run(img_view)
 float *img_view;
@@ -85,25 +91,21 @@ void ini_backpr(n)
 {
 	struct net *ptrn;
 	struct layer *ptrl;
-	int i, j;
+	int i;
 
 	for (ptrn=bignet.arr; ptrn < bignet.arr + bignet.num_nets; ptrn++)
 		for (ptrl=ptrn->arr; ptrl < ptrn->arr + ptrn->num_layers; ptrl++) {
 			ptrl->err_w = malloc(sizeof(float*) * ptrl->n);
-			*(ptrl->err_w) = malloc(sizeof(float) * ptrl->n * ptrl->prev_n);
+			ptrl->err_w[0] = malloc(sizeof(float) * ptrl->n * ptrl->prev_n);
 			ptrl->err_b = malloc(sizeof(float) * ptrl->n);
-			ptrl->aux_b = malloc(sizeof(float) * ptrl->n);
+			if (n > 1)
+				ptrl->aux_b = malloc(sizeof(float) * ptrl->n);
 			ptrl->change_w = malloc(sizeof(float*) * ptrl->n);
-			*(ptrl->change_w) = malloc(sizeof(float) * ptrl->n * ptrl->prev_n);
-			ptrl->change_b = malloc(sizeof(float*) * ptrl->n);
+			ptrl->change_w[0] = calloc(ptrl->n * ptrl->prev_n, sizeof(float));
+			ptrl->change_b = calloc(ptrl->n, sizeof(float));
 			for (i=1; i < ptrl->n; i++) {
 				ptrl->err_w[i] = *(ptrl->err_w) + i * ptrl->prev_n;
 				ptrl->change_w[i] = *(ptrl->change_w) + i * ptrl->prev_n;
-			}
-			for (i=0; i < ptrl->n; i++) {
-				for (j=0; j < ptrl->prev_n; j++)
-					ptrl->change_w[i][j] = 0;
-				ptrl->change_b[i] = 0;
 			}
 		}
 	bignet.N = n;
@@ -119,6 +121,8 @@ void end_backpr()
 		for (ptrl=ptrn->arr; ptrl < ptrn->arr + ptrn->num_layers; ptrl++) {
 			free(ptrl->err_w[0]); free(ptrl->err_w); free(ptrl->err_b);
 			free(ptrl->change_w[0]); free(ptrl->change_w); free(ptrl->change_b);
+			if (bignet.N > 1)
+				free(ptrl->aux_b);
 		}
 	bignet.back_on = 0;
 }
@@ -149,35 +153,62 @@ float expected[], *img_view;
 	for (ptrn = bignet.num_nets - 1 + bignet.arr; ptrn >= bignet.arr; ptrn--) {
 		ptrl = ptrn->num_layers - 1 + ptrn->arr;
 		/*delta*/
-		if (ptrn->out_id == -1)
+		if (bignet.N > 1) {
+			if (ptrn->out_id == -1)
+				for (i=0; i < ptrl->n; i++)
+					ptrl->aux_b[i] = ptrl->a[i] - expected[i];
+			else
+				for (i=0; i < ptrl->n; i++)
+					ptrl->aux_b[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
 			for (i=0; i < ptrl->n; i++)
-				ptrl->aux_b[i] = ptrl->a[i] - expected[i];
-		else
-			for (i=0; i < ptrl->n; i++)
-				ptrl->aux_b[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
-		for (i=0; i < ptrl->n; i++)
-			ptrl->err_b[i] += ptrl->aux_b[i] / bignet.N;
-		/*derivada parcial do custo para o peso*/
-		do {
-			cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrl->aux_b, 1, (ptrl-1)->a, 1, &ptrl->err_w[0][0], ptrl->prev_n);
-			cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrl->prev_n, 1, &ptrl->w[0][0], ptrl->prev_n, ptrl->aux_b, 1, 0, (ptrl-1)->aux_b, 1);
-			ptrl--;
-			for (i=0; i < ptrl->n; i++) {
-				ptrl->aux_b[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
 				ptrl->err_b[i] += ptrl->aux_b[i] / bignet.N;
-			}
-		} while (ptrl > ptrn->arr);
-		cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrl->aux_b, 1, ptrn->input_first? ptrn->input_first : img_view, 1, &ptrl->err_w[0][0], ptrl->prev_n);
-		if (ptrn->input_first) {
-			for (ptrn_prev = ptrn->in_nets[0]; ptrn_prev < ptrn->in_nets[0] + ptrn->num_in_nets; ptrn_prev++) {
-				cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrn_prev->arr[ptrn_prev->num_layers-1].n,
-					       	1, &ptrl->w[0][next_col], ptrl->prev_n, 
-						ptrl->aux_b, 1, 
-						0, ptrn_prev->arr[ptrn_prev->num_layers-1].aux_b, 1);
-				next_col += ptrn_prev->arr[ptrn_prev->num_layers-1].n;
-			}
-		} else
-			img_view += ptrl->prev_n;
+			/*derivada parcial do custo para o peso*/
+			do {
+				cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrl->aux_b, 1, (ptrl-1)->a, 1, &ptrl->err_w[0][0], ptrl->prev_n);
+				cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrl->prev_n, 1, &ptrl->w[0][0], ptrl->prev_n, ptrl->aux_b, 1, 0, (ptrl-1)->aux_b, 1);
+				ptrl--;
+				for (i=0; i < ptrl->n; i++) {
+					ptrl->aux_b[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
+					ptrl->err_b[i] += ptrl->aux_b[i] / bignet.N;
+				}
+			} while (ptrl > ptrn->arr);
+			cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrl->aux_b, 1, ptrn->input_first? ptrn->input_first : img_view, 1, &ptrl->err_w[0][0], ptrl->prev_n);
+			if (ptrn->input_first) {
+				for (ptrn_prev = ptrn->in_nets[0]; ptrn_prev < ptrn->in_nets[0] + ptrn->num_in_nets; ptrn_prev++) {
+					cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrn_prev->arr[ptrn_prev->num_layers-1].n,
+							1, &ptrl->w[0][next_col], ptrl->prev_n, 
+							ptrl->aux_b, 1, 
+							0, ptrn_prev->arr[ptrn_prev->num_layers-1].aux_b, 1);
+					next_col += ptrn_prev->arr[ptrn_prev->num_layers-1].n;
+				}
+			} else
+				img_view += ptrl->prev_n;
+		} else {
+			if (ptrn->out_id == -1)
+				for (i=0; i < ptrl->n; i++)
+					ptrl->err_b[i] = ptrl->a[i] - expected[i];
+			else
+				for (i=0; i < ptrl->n; i++)
+					ptrl->err_b[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
+			do {
+				cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1, ptrl->err_b, 1, (ptrl-1)->a, 1, &ptrl->err_w[0][0], ptrl->prev_n);
+				cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrl->prev_n, 1, &ptrl->w[0][0], ptrl->prev_n, ptrl->err_b, 1, 0, (ptrl-1)->err_b, 1);
+				ptrl--;
+				for (i=0; i < ptrl->n; i++)
+					ptrl->err_b[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
+			} while (ptrl > ptrn->arr);
+			cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1, ptrl->err_b, 1, ptrn->input_first? ptrn->input_first : img_view, 1, &ptrl->err_w[0][0], ptrl->prev_n);
+			if (ptrn->input_first) {
+				for (ptrn_prev = ptrn->in_nets[0]; ptrn_prev < ptrn->in_nets[0] + ptrn->num_in_nets; ptrn_prev++) {
+					cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrn_prev->arr[ptrn_prev->num_layers-1].n,
+							1, &ptrl->w[0][next_col], ptrl->prev_n, 
+							ptrl->err_b, 1, 
+							0, ptrn_prev->arr[ptrn_prev->num_layers-1].err_b, 1);
+					next_col += ptrn_prev->arr[ptrn_prev->num_layers-1].n;
+				}
+			} else
+				img_view += ptrl->prev_n;
+		}
 	}
 }
 
@@ -209,9 +240,9 @@ void apply_backpr()
 static float img[PIXEL_QTT];
 static points[8][2];
 
-#define MOST_DARK 0.4
+#define WHITER 0.5
 #define FIND_EDGES \
-			if (img[i * DIM_POOL + j] < MOST_DARK) { \
+			if (img[i * DIM_POOL + j] > WHITER) { \
 				points[k][0] = i; points[k][1] = j; \
 				k++; \
 				found = 1; \
@@ -224,7 +255,7 @@ static points[8][2];
 	}
 
 static void metadata(img_view)
-float (*img_view)[INPUT_QTT];
+float *img_view;
 {
 	int i, j, k, found;
 	
@@ -256,7 +287,7 @@ float (*img_view)[INPUT_QTT];
 	k = DIM_IMG * DIM_IMG;
 	for (i=0; i < 8; i++)
 		for (j=i+1; j < 8; j++)
-			(*img_view)[k++] = (abs(points[i][0] - points[j][0]) + abs(points[i][1] - points[j][1])) / (DIM_IMG * 2.0);
+			img_view[k++] = (abs(points[i][0] - points[j][0]) + abs(points[i][1] - points[j][1])) / (DIM_IMG * 2.0);
 }
 
 static float blur[3][3] = {
@@ -264,9 +295,15 @@ static float blur[3][3] = {
 	{0.125 , 0.25 , 0.125},
 	{0.0625, 0.125, 0.0625}
 };
-
+/*
+static edge_right_v[3][3] = {
+	{-1, 0, 1},
+	{-1, 0, 1},
+	{-1, 0, 1}
+};
+*/
 static void convolution(img_view)
-float (*img_view)[INPUT_QTT];
+float *img_view;
 {
 	int i, j, k, l;
 	float counter;
@@ -277,7 +314,7 @@ float (*img_view)[INPUT_QTT];
 			for (k=0; k < 3; k++)
 				for (l=0; l < 3; l++)
 					counter += img[(i-1+k) * DIM_POOL + (j-1+l)] * blur[k][l];
-			(*img_view)[(i-1) * DIM_IMG + (j-1)] = counter;
+			img_view[(i-1) * DIM_IMG + (j-1)] = counter;
 		}
 }
 
@@ -285,7 +322,7 @@ float (*img_view)[INPUT_QTT];
 
 read_png_file(name, img_view, verbose)
 char name[];
-float (*img_view)[INPUT_QTT];
+float *img_view;
 {
 	FILE *fp;
 	unsigned char header[8];
@@ -296,30 +333,34 @@ float (*img_view)[INPUT_QTT];
 	int height;
 	int i, j, k, l;
 	float sum;
-
+	
+	if (!img_view) {
+		fputs("[read_png_file] null image array\n", stderr);
+		return 1;
+	}
 	if (!(fp = fopen(name, "rb"))) {
 		fprintf(stderr, "[read_png_file] File %s could not be opened for reading\n", name);
-		return 1;
+		return 2;
 	}
 	fread(header, 1, 8, fp);
 	if (png_sig_cmp(header, 0, 8)) {
 		fprintf(stderr, "[read_png_file] File %s is not recognized as a PNG image\n", name);
-		return 2;
+		return 3;
 	}
 	if (!(png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL))) {
 		END
 		fputs("[read_png_file] png_create_read_struct failed\n", stderr);
-		return 3;
+		return 4;
 	}
 	if (!(info = png_create_info_struct(png))) {
 		END
 		fputs("[read_png_file] png_create_info_struct failed\n", stderr);
-		return 4;
+		return 5;
 	}
 	if (setjmp(png_jmpbuf(png))) {
 		END
 		fputs("[read_png_file] init_io failed\n", stderr);
-		return 5;
+		return 6;
 	}
 	png_init_io(png, fp);
 	png_set_sig_bytes(png, 8);
@@ -340,7 +381,7 @@ float (*img_view)[INPUT_QTT];
 	if (setjmp(png_jmpbuf(png))) {
 		END
 		fputs("[read_png_file] read_image failed\n", stderr);
-		return 6;
+		return 7;
 	}
 	rows = (png_bytepp) malloc(sizeof(png_bytep) * height);
 	for (i=0; i < height; i++)
@@ -352,7 +393,7 @@ float (*img_view)[INPUT_QTT];
 			for (k=0; k < POOL_LEN; k++)
 				for (l=0; l < POOL_LEN; l++)
 					sum += rows[i * POOL_LEN + k][j * POOL_LEN + l];
-			img[i * DIM_POOL + j] = sum / (POOL_LEN * POOL_LEN) / 255;
+			img[i * DIM_POOL + j] = 1 - sum / (POOL_LEN * POOL_LEN) / 255;
 		}
 	for (i=0; i < height; i++)
 		free(rows[i]);
@@ -401,11 +442,10 @@ struct create_network nets[];
 			bignet.num_classes = ptrn->arr[ptrn->num_layers-1].n;
 		}
 	}
-	amount = malloc(sizeof(unsigned) * (bignet.num_nets - 1));
+	amount = calloc(bignet.num_nets - 1, sizeof(unsigned));
 	for (ptrn=bignet.arr, ptrc=nets, i=0; ptrn < bignet.arr + bignet.num_nets; ptrn++, ptrc++, i++) {
 		ptrn->in_nets = malloc(sizeof(struct net*) * (bignet.num_nets - 1));
 		ptrn->num_in_nets = 0;
-		amount[i] = 0;
 	}
 	for (ptrn=bignet.arr, ptrc=nets, i=0; ptrn < bignet.arr + bignet.num_nets - 1; ptrn++, ptrc++, i++) {
 		bignet.arr[ptrn->out_id].in_nets[bignet.arr[ptrn->out_id].num_in_nets++] = ptrn;
