@@ -284,38 +284,56 @@ float *img_view;
 	for (j=DIM_POOL-1; j >= 0; j--) {
 		for (i=DIM_POOL-1; i >= 0; i--)
 			FIND_EDGES
-	k = DIM_IMG * DIM_IMG;
+	k = FEATURE_QTT * AREA_IMG;
 	for (i=0; i < 8; i++)
 		for (j=i+1; j < 8; j++)
-			img_view[k++] = (abs(points[i][0] - points[j][0]) + abs(points[i][1] - points[j][1])) / (DIM_IMG * 2.0);
+			img_view[k++] = (abs(points[i][0] - points[j][0]) + abs(points[i][1] - points[j][1])) / (DIM_IMG1 * 2.0);
 }
 
-static float blur[3][3] = {
+static float blur_k[3][3] = {
 	{0.0625, 0.125, 0.0625},
 	{0.125 , 0.25 , 0.125},
 	{0.0625, 0.125, 0.0625}
 };
-/*
-static edge_right_v[3][3] = {
-	{-1, 0, 1},
-	{-1, 0, 1},
-	{-1, 0, 1}
+static float edge_x[3][3] = {
+	{1, 0, -1},
+	{2, 0, -2},
+	{1, 0, -1}
 };
-*/
-static void convolution(img_view)
-float *img_view;
+static float edge_y[3][3] = {
+	{-1, -2, -1},
+	{0, 0, 0},
+	{1, 2, 1}
+};
+static float output_edge_x[DIM_IMG1 * DIM_IMG1];
+static float output_edge_y[DIM_IMG1 * DIM_IMG1];
+static float output_combine[DIM_IMG1 * DIM_IMG1];
+
+static void convolution(img_view, in_view, kernel, dim_in, dim_out)
+float *img_view, *in_view;
+float kernel[][3];
 {
 	int i, j, k, l;
 	float counter;
 	
-	for (i=1; i < DIM_POOL-1; i++)
-		for (j=1; j < DIM_POOL-1; j++) {
+	for (i=1; i < dim_in-1; i++)
+		for (j=1; j < dim_in-1; j++) {
 			counter = 0;
 			for (k=0; k < 3; k++)
 				for (l=0; l < 3; l++)
-					counter += img[(i-1+k) * DIM_POOL + (j-1+l)] * blur[k][l];
-			img_view[(i-1) * DIM_IMG + (j-1)] = counter;
+					counter += in_view[(i-1+k) * dim_in + (j-1+l)] * kernel[k][l];
+			img_view[(i-1) * dim_out + (j-1)] = counter;
 		}
+}
+
+static void combine(img_view, x, y, dim)
+float *img_view, *x, *y;
+{
+	int i, j;
+
+	for (i=0; i < dim; i++)
+		for (j=0; j < dim; j++)
+			img_view[i * dim + j] = sqrt(pow(x[i * dim + j], 2) + pow(y[i * dim + j], 2));
 }
 
 #define END png_destroy_read_struct(&png, &info, NULL); fclose(fp);
@@ -400,7 +418,10 @@ float *img_view;
 	free(rows);
 	END
 	metadata(img_view);
-	convolution(img_view);
+	convolution(output_edge_x, img, edge_x, DIM_POOL, DIM_IMG1);
+	convolution(output_edge_y, img, edge_y, DIM_POOL, DIM_IMG1);
+	combine(output_combine, output_edge_x, output_edge_y, DIM_IMG1);
+	convolution(img_view, output_combine, blur_k, DIM_IMG1, DIM_IMG2);
 	return 0;
 }
 

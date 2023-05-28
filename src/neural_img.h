@@ -27,9 +27,12 @@
 #define POOL_LEN 4
 #define DIM_POOL (WIDTH / POOL_LEN)
 #define PIXEL_QTT (DIM_POOL * DIM_POOL)
-#define DIM_IMG (DIM_POOL - 2)
+#define DIM_IMG1 (DIM_POOL - 2)
+#define DIM_IMG2 (DIM_IMG1 - 2)
+#define AREA_IMG (DIM_IMG2 * DIM_IMG2)
 #define METADATA_QTT 28
-#define INPUT_QTT (DIM_IMG * DIM_IMG + METADATA_QTT)
+#define FEATURE_QTT 1
+#define INPUT_QTT (FEATURE_QTT * AREA_IMG + METADATA_QTT)
 #define MAX_CLASSES 36
 
 struct create_network {

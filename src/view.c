@@ -228,7 +228,7 @@ char name[];
         png_structp png;
         png_infop info;
         png_bytepp rows;
-        int i, j;
+        int i, j, k;
 	
 	if (!(fp = fopen(name, "wb"))) {
 		fprintf(stderr, "[write_png] File %s could not be opened for writing\n", name);
@@ -237,17 +237,18 @@ char name[];
         png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
         info = png_create_info_struct(png);
         png_init_io(png, fp);
-        png_set_IHDR(png, info, DIM_IMG, DIM_IMG, 8, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_ADAM7, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+        png_set_IHDR(png, info, FEATURE_QTT * DIM_IMG2, DIM_IMG2, 8, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_ADAM7, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
         png_write_info(png, info);
-        rows = (png_bytepp) malloc(sizeof(png_bytep) * DIM_IMG);
-        for (i=0; i < DIM_IMG; i++)
-                rows[i] = (png_bytep) malloc(DIM_IMG * 4);
-        for (i=0; i < DIM_IMG; i++)
-                for (j=0; j < DIM_IMG; j++)
-                        rows[i][j] = (png_byte) (img[i * DIM_IMG + j] * 255);
+        rows = (png_bytepp) malloc(sizeof(png_bytep) * DIM_IMG2);
+        for (i=0; i < DIM_IMG2; i++)
+                rows[i] = (png_bytep) malloc(DIM_IMG2 * 4 * FEATURE_QTT);
+	for (i=0; i < DIM_IMG2; i++)
+		for (k=0; k < FEATURE_QTT; k++)
+			for (j=0; j < DIM_IMG2; j++)
+				rows[i][j + k * DIM_IMG2] = (png_byte) (img[i * DIM_IMG2 + j + k * AREA_IMG] * 255);
         png_write_image(png, rows);
         png_write_end(png, NULL);
-        for (i=0; i < DIM_IMG; i++)
+        for (i=0; i < DIM_IMG2; i++)
                 free(rows[i]);
 	free(rows);
         fclose(fp);

@@ -224,7 +224,7 @@ char fname_training[], fname_test[];
 	printf("%u training images\n", train_count);
 	printf("%u test images\n", test_count);
 	if (metric_fn)
-		printf("%.2f (test) %.2f (training) [0/%hd]\n", avg(metric_fn, test_count, test_views), avg(metric_fn, train_count, train_views), epochs);
+		printf("%.3f (test) %.3f (training) [0/%d]\n", avg(metric_fn, test_count, test_views), avg(metric_fn, train_count, train_views), epochs);
 	for (i=0; i < MAX_CLASSES-1; i++)
 		class[i] = 0;
 	state = 's';
@@ -242,7 +242,7 @@ char fname_training[], fname_test[];
 		method_fn(train_views, class);
 		apply_backpr();
 		if ((metric_fn && method_n != 1) || (metric_fn && i % CLOCK == 0))
-			printf("%.2f (test) %.2f (training) [%d/%d]\n", avg(metric_fn, test_count, test_views), avg(metric_fn, train_count, train_views), i+1, epochs);
+			printf("%.3f (test) %.3f (training) [%d/%d]\n", avg(metric_fn, test_count, test_views), avg(metric_fn, train_count, train_views), i+1, epochs);
 		if (state != 's')
 			break;
 		if ((method_n != 1 && !i) || (method_n == 1 && i == CLOCK-1)) {
