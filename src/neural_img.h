@@ -28,7 +28,6 @@
 #define DIM_POOL (WIDTH / POOL_LEN)
 #define PIXEL_QTT (DIM_POOL * DIM_POOL)
 #define DIM_IMG1 (DIM_POOL - 2)
-#define DIM_IMG2 (DIM_IMG1 - 2)
 #define DIM_IMGL (DIM_IMG1)
 #define AREA_IMG (DIM_IMGL * DIM_IMGL)
 #define METADATA_QTT 28

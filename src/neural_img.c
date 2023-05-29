@@ -33,11 +33,11 @@ struct net {
 	short out_id;
 };
 
-struct {
+static struct {
 	struct net *arr;
-	float N;
 	unsigned num_classes;
 	unsigned char back_on, num_nets;
+	float N;
 } bignet;
 
 float *network_output;
@@ -238,8 +238,6 @@ void apply_backpr()
 			}
 }
 
-static points[8][2];
-
 #define WHITER 0.5
 #define FIND_EDGES \
 			if (img_in[i * dim_in + j] > WHITER) { \
@@ -257,6 +255,7 @@ static points[8][2];
 static void metadata(img_view, img_in, dim_in)
 float *img_view, *img_in;
 {
+	static points[8][2];
 	int i, j, k, found;
 	
 	k = found = 0;
@@ -295,31 +294,7 @@ static float blur_k[3][3] = {
 	{0.125 , 0.25 , 0.125},
 	{0.0625, 0.125, 0.0625}
 };
-/*
-static float edge_x[3][3] = {
-	{1, 0, -1},
-	{2, 0, -2},
-	{1, 0, -1}
-};
-static float edge_y[3][3] = {
-	{-1, -2, -1},
-	{0, 0, 0},
-	{1, 2, 1}
-};
-static float output_edge_x[DIM_IMG1 * DIM_IMG1];
-static float output_edge_y[DIM_IMG1 * DIM_IMG1];
-static float output_combine[DIM_IMG1 * DIM_IMG1];
 
-static void combine(img_view, x, y, dim)
-float *img_view, *x, *y;
-{
-	int i, j;
-
-	for (i=0; i < dim; i++)
-		for (j=0; j < dim; j++)
-			img_view[i * dim + j] = sqrt(pow(x[i * dim + j], 2) + pow(y[i * dim + j], 2));
-}
-*/
 static void convolution(img_view, in_view, kernel, dim_in, dim_out)
 float *img_view, *in_view;
 float kernel[][3];
@@ -337,16 +312,15 @@ float kernel[][3];
 		}
 }
 
-static float img[PIXEL_QTT];
-
 #define END png_destroy_read_struct(&png, &info, NULL); fclose(fp);
 
 read_png_file(name, img_view, verbose)
 char name[];
 float *img_view;
 {
+	static float img[PIXEL_QTT];
+	static unsigned char header[8];
 	FILE *fp;
-	unsigned char header[8];
 	png_structp png;
 	png_infop info;
 	png_bytepp rows;
@@ -354,7 +328,7 @@ float *img_view;
 	int height;
 	int i, j, k, l;
 	float sum;
-	
+
 	if (!img_view) {
 		fputs("[read_png_file] null image array\n", stderr);
 		return 1;
@@ -422,12 +396,6 @@ float *img_view;
 	END
 	metadata(img_view, img, DIM_POOL);
 	convolution(img_view, img, blur_k, DIM_POOL, DIM_IMG1);
-	/*
-	convolution(output_edge_x, img, edge_x, DIM_POOL, DIM_IMG1);
-	convolution(output_edge_y, img, edge_y, DIM_POOL, DIM_IMG1);
-	combine(output_combine, output_edge_x, output_edge_y, DIM_IMG1);
-	convolution(img_view, output_combine, blur_k, DIM_IMG1, DIM_IMG2);
-	*/
 	return 0;
 }
 
