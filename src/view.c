@@ -237,18 +237,18 @@ char name[];
         png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
         info = png_create_info_struct(png);
         png_init_io(png, fp);
-        png_set_IHDR(png, info, FEATURE_QTT * DIM_IMG2, DIM_IMG2, 8, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_ADAM7, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+        png_set_IHDR(png, info, FEATURE_QTT * DIM_IMGL, DIM_IMGL, 8, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_ADAM7, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
         png_write_info(png, info);
-        rows = (png_bytepp) malloc(sizeof(png_bytep) * DIM_IMG2);
-        for (i=0; i < DIM_IMG2; i++)
-                rows[i] = (png_bytep) malloc(DIM_IMG2 * 4 * FEATURE_QTT);
-	for (i=0; i < DIM_IMG2; i++)
+        rows = (png_bytepp) malloc(sizeof(png_bytep) * DIM_IMGL);
+        for (i=0; i < DIM_IMGL; i++)
+                rows[i] = (png_bytep) malloc(DIM_IMGL * 4 * FEATURE_QTT);
+	for (i=0; i < DIM_IMGL; i++)
 		for (k=0; k < FEATURE_QTT; k++)
-			for (j=0; j < DIM_IMG2; j++)
-				rows[i][j + k * DIM_IMG2] = (png_byte) (img[i * DIM_IMG2 + j + k * AREA_IMG] * 255);
+			for (j=0; j < DIM_IMGL; j++)
+				rows[i][j + k * DIM_IMGL] = (png_byte) (img[i * DIM_IMGL + j + k * AREA_IMG] * 255);
         png_write_image(png, rows);
         png_write_end(png, NULL);
-        for (i=0; i < DIM_IMG2; i++)
+        for (i=0; i < DIM_IMGL; i++)
                 free(rows[i]);
 	free(rows);
         fclose(fp);

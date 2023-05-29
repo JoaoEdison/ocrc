@@ -40,6 +40,7 @@ struct {
 	unsigned char back_on, num_nets;
 } bignet;
 
+float *network_output;
 
 #define ACTIVATION_FN(X) tanh(X)
 #define DERIVATIVE_ACTIVATION_FN(Z) (1 - powf(tanh(Z), 2))
@@ -237,12 +238,11 @@ void apply_backpr()
 			}
 }
 
-static float img[PIXEL_QTT];
 static points[8][2];
 
 #define WHITER 0.5
 #define FIND_EDGES \
-			if (img[i * DIM_POOL + j] > WHITER) { \
+			if (img_in[i * dim_in + j] > WHITER) { \
 				points[k][0] = i; points[k][1] = j; \
 				k++; \
 				found = 1; \
@@ -254,40 +254,40 @@ static points[8][2];
 		} \
 	}
 
-static void metadata(img_view)
-float *img_view;
+static void metadata(img_view, img_in, dim_in)
+float *img_view, *img_in;
 {
 	int i, j, k, found;
 	
 	k = found = 0;
-	for (i=0; i < DIM_POOL; i++) {
-		for (j=0; j < DIM_POOL; j++)
+	for (i=0; i < dim_in; i++) {
+		for (j=0; j < dim_in; j++)
 			FIND_EDGES
-	for (i=0; i < DIM_POOL; i++) {
-		for (j=DIM_POOL-1; j >= 0; j--)
+	for (i=0; i < dim_in; i++) {
+		for (j=dim_in-1; j >= 0; j--)
 			FIND_EDGES
-	for (i=DIM_POOL-1; i >= 0; i--) {
-		for (j=0; j < DIM_POOL; j++)
+	for (i=dim_in-1; i >= 0; i--) {
+		for (j=0; j < dim_in; j++)
 			FIND_EDGES
-	for (i=DIM_POOL-1; i >= 0; i--) {
-		for (j=DIM_POOL-1; j >= 0; j--)
+	for (i=dim_in-1; i >= 0; i--) {
+		for (j=dim_in-1; j >= 0; j--)
 			FIND_EDGES
-	for (j=0; j < DIM_POOL; j++) {
-		for (i=0; i < DIM_POOL; i++)
+	for (j=0; j < dim_in; j++) {
+		for (i=0; i < dim_in; i++)
 			FIND_EDGES
-	for (j=0; j < DIM_POOL; j++) {
-		for (i=DIM_POOL-1; i >= 0; i--)
+	for (j=0; j < dim_in; j++) {
+		for (i=dim_in-1; i >= 0; i--)
 			FIND_EDGES
-	for (j=DIM_POOL-1; j >= 0; j--) {
-		for (i=0; i < DIM_POOL; i++)
+	for (j=dim_in-1; j >= 0; j--) {
+		for (i=0; i < dim_in; i++)
 			FIND_EDGES
-	for (j=DIM_POOL-1; j >= 0; j--) {
-		for (i=DIM_POOL-1; i >= 0; i--)
+	for (j=dim_in-1; j >= 0; j--) {
+		for (i=dim_in-1; i >= 0; i--)
 			FIND_EDGES
 	k = FEATURE_QTT * AREA_IMG;
 	for (i=0; i < 8; i++)
 		for (j=i+1; j < 8; j++)
-			img_view[k++] = (abs(points[i][0] - points[j][0]) + abs(points[i][1] - points[j][1])) / (DIM_IMG1 * 2.0);
+			img_view[k++] = (abs(points[i][0] - points[j][0]) + abs(points[i][1] - points[j][1])) / (dim_in * 2.0);
 }
 
 static float blur_k[3][3] = {
@@ -295,6 +295,7 @@ static float blur_k[3][3] = {
 	{0.125 , 0.25 , 0.125},
 	{0.0625, 0.125, 0.0625}
 };
+/*
 static float edge_x[3][3] = {
 	{1, 0, -1},
 	{2, 0, -2},
@@ -309,6 +310,16 @@ static float output_edge_x[DIM_IMG1 * DIM_IMG1];
 static float output_edge_y[DIM_IMG1 * DIM_IMG1];
 static float output_combine[DIM_IMG1 * DIM_IMG1];
 
+static void combine(img_view, x, y, dim)
+float *img_view, *x, *y;
+{
+	int i, j;
+
+	for (i=0; i < dim; i++)
+		for (j=0; j < dim; j++)
+			img_view[i * dim + j] = sqrt(pow(x[i * dim + j], 2) + pow(y[i * dim + j], 2));
+}
+*/
 static void convolution(img_view, in_view, kernel, dim_in, dim_out)
 float *img_view, *in_view;
 float kernel[][3];
@@ -326,15 +337,7 @@ float kernel[][3];
 		}
 }
 
-static void combine(img_view, x, y, dim)
-float *img_view, *x, *y;
-{
-	int i, j;
-
-	for (i=0; i < dim; i++)
-		for (j=0; j < dim; j++)
-			img_view[i * dim + j] = sqrt(pow(x[i * dim + j], 2) + pow(y[i * dim + j], 2));
-}
+static float img[PIXEL_QTT];
 
 #define END png_destroy_read_struct(&png, &info, NULL); fclose(fp);
 
@@ -417,11 +420,14 @@ float *img_view;
 		free(rows[i]);
 	free(rows);
 	END
-	metadata(img_view);
+	metadata(img_view, img, DIM_POOL);
+	convolution(img_view, img, blur_k, DIM_POOL, DIM_IMG1);
+	/*
 	convolution(output_edge_x, img, edge_x, DIM_POOL, DIM_IMG1);
 	convolution(output_edge_y, img, edge_y, DIM_POOL, DIM_IMG1);
 	combine(output_combine, output_edge_x, output_edge_y, DIM_IMG1);
 	convolution(img_view, output_combine, blur_k, DIM_IMG1, DIM_IMG2);
+	*/
 	return 0;
 }
 
