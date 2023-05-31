@@ -88,39 +88,32 @@ struct vector_view {
 	int end, size;
 };
 
-void train_all(train, class)
+void train_all(train)
 struct vector_view train[];
-float class[];
 {
 	int i, j;
 
-	for (i=0; i < MAX_CLASSES; i++, class[i-1] = 0) {
-		class[i] = 1;
+	for (i=0; i < MAX_CLASSES; i++)
 		for (j=0; j < train[i].end; j++) {
 			run(train[i].arr[j]);
-			backpr(class, train[i].arr[j]);
+			backpr(train[i].arr[j], i);
 		}
-	}
 }
 
-void train_stochastic(train, class)
+void train_stochastic(train)
 struct vector_view train[];
-float class[];
 {
 	int i, j;
 	struct vector_view *ptrv;
 
 	i = rand() % MAX_CLASSES;
-	class[i] = 1;
 	ptrv = &train[i];
 	j = rand() % ptrv->end;
 	run(ptrv->arr[j]);
-	backpr(class, ptrv->arr[j]);
-	class[i] = 0;
+	backpr(ptrv->arr[j], i);
 }
 
-batch_size;
-
+int batch_size;
 void train_batch(train, class)
 struct vector_view train[];
 float class[];
@@ -129,7 +122,7 @@ float class[];
 	int i;
 
 	for (i=0; i < batch_size; i++)
-		train_stochastic(train, class);
+		train_stochastic(train);
 }
 
 read_paths(fname, n, views)
@@ -208,7 +201,6 @@ char fname_training[], fname_test[];
 	void *stop_training(), print_fomat_seconds();
 	float avg();
 	struct vector_view train_views[MAX_CLASSES], test_views[MAX_CLASSES];
-	float class[MAX_CLASSES];
 	int i, j, train_count, test_count, error;
 	struct timeval begin, end;
 	pthread_t tid;
@@ -225,8 +217,6 @@ char fname_training[], fname_test[];
 	printf("%u test images\n", test_count);
 	if (metric_fn)
 		printf("%.3f (test) %.3f (training) [0/%d]\n", avg(metric_fn, test_count, test_views), avg(metric_fn, train_count, train_views), epochs);
-	for (i=0; i < MAX_CLASSES-1; i++)
-		class[i] = 0;
 	state = 's';
 	if (!method_n)
 		method_n = train_count;
@@ -239,7 +229,7 @@ char fname_training[], fname_test[];
 	gettimeofday(&begin, 0);
 	for (i=0; i < epochs; i++) {
 		clear_backpr();
-		method_fn(train_views, class);
+		method_fn(train_views);
 		apply_backpr();
 		if ((metric_fn && method_n != 1) || (metric_fn && i % CLOCK == 0))
 			printf("%.3f (test) %.3f (training) [%d/%d]\n", avg(metric_fn, test_count, test_views), avg(metric_fn, train_count, train_views), i+1, epochs);
@@ -276,21 +266,14 @@ float avg(metric_fn, n, views)
 float (*metric_fn)();
 struct vector_view views[];
 {
-	float class[MAX_CLASSES];
 	float sum;
 	int i, j;
 	
-	for (i=0; i < MAX_CLASSES; i++)
-		class[i] = 0;
-	for (sum=i=0; i < MAX_CLASSES; i++) {
-		if (i)
-			class[i-1] = 0;
-		class[i] = 1;
+	for (sum=i=0; i < MAX_CLASSES; i++)
 		for (j=0; j < views[i].end; j++) {
 			run(views[i].arr[j]);
-			sum += metric_fn(class, NULL, NULL);
+			sum += metric_fn(i, NULL, NULL);
 		}
-	}
 	return sum / (float) n;
 }
 
@@ -303,6 +286,7 @@ void *stop_training()
 	pthread_mutex_lock(&mutex);
 	state = 'E';
 	pthread_mutex_unlock(&mutex);
+	return NULL;
 }
 
 void print_fomat_seconds(seconds)

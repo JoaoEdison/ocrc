@@ -94,6 +94,7 @@ void ini_backpr(n)
 	struct layer *ptrl;
 	int i;
 
+	bignet.N = n;
 	for (ptrn=bignet.arr; ptrn < bignet.arr + bignet.num_nets; ptrn++)
 		for (ptrl=ptrn->arr; ptrl < ptrn->arr + ptrn->num_layers; ptrl++) {
 			ptrl->err_w = malloc(sizeof(float*) * ptrl->n);
@@ -109,7 +110,6 @@ void ini_backpr(n)
 				ptrl->change_w[i] = *(ptrl->change_w) + i * ptrl->prev_n;
 			}
 		}
-	bignet.N = n;
 	bignet.back_on = 1;
 }
 
@@ -143,73 +143,55 @@ void clear_backpr()
 			}
 }
 
-void backpr(expected, img_view)
-float expected[], *img_view;
+void backpr(img_view, expected)
+float *img_view;
 {
 	struct net *ptrn, *ptrn_prev;
 	struct layer *ptrl;
+	float *ptrberr;
 	int i, next_col;
 	
 	next_col = 0;	
 	for (ptrn = bignet.num_nets - 1 + bignet.arr; ptrn >= bignet.arr; ptrn--) {
 		ptrl = ptrn->num_layers - 1 + ptrn->arr;
+		ptrberr = bignet.N > 1? ptrl->aux_b : ptrl->err_b;
 		/*delta*/
-		if (bignet.N > 1) {
-			if (ptrn->out_id == -1)
-				for (i=0; i < ptrl->n; i++)
-					ptrl->aux_b[i] = ptrl->a[i] - expected[i];
-			else
-				for (i=0; i < ptrl->n; i++)
-					ptrl->aux_b[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
+		if (ptrn->out_id == -1)
+			for (i=0; i < ptrl->n; i++)
+				ptrberr[i] = i == expected? ptrl->a[i] - 1 : ptrl->a[i];
+		else
+			for (i=0; i < ptrl->n; i++)
+				ptrberr[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
+		if (bignet.N > 1)
 			for (i=0; i < ptrl->n; i++)
 				ptrl->err_b[i] += ptrl->aux_b[i] / bignet.N;
-			/*derivada parcial do custo para o peso*/
-			do {
-				cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrl->aux_b, 1, (ptrl-1)->a, 1, &ptrl->err_w[0][0], ptrl->prev_n);
-				cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrl->prev_n, 1, &ptrl->w[0][0], ptrl->prev_n, ptrl->aux_b, 1, 0, (ptrl-1)->aux_b, 1);
-				ptrl--;
-				for (i=0; i < ptrl->n; i++) {
-					ptrl->aux_b[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
+		/*derivada parcial do custo para o peso*/
+		do {
+			cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrberr, 1, (ptrl-1)->a, 1, &ptrl->err_w[0][0], ptrl->prev_n);
+			cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrl->prev_n, 1, &ptrl->w[0][0], ptrl->prev_n, ptrberr, 1, 0,
+				       bignet.N > 1? (ptrl-1)->aux_b : (ptrl-1)->err_b, 1);
+			ptrl--;
+			ptrberr = bignet.N > 1? ptrl->aux_b : ptrl->err_b;
+			for (i=0; i < ptrl->n; i++) {
+				ptrberr[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
+				if (bignet.N > 1)
 					ptrl->err_b[i] += ptrl->aux_b[i] / bignet.N;
-				}
-			} while (ptrl > ptrn->arr);
-			cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrl->aux_b, 1, ptrn->input_first? ptrn->input_first : img_view, 1, &ptrl->err_w[0][0], ptrl->prev_n);
-			if (ptrn->input_first) {
-				for (ptrn_prev = ptrn->in_nets[0]; ptrn_prev < ptrn->in_nets[0] + ptrn->num_in_nets; ptrn_prev++) {
-					cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrn_prev->arr[ptrn_prev->num_layers-1].n,
-							1, &ptrl->w[0][next_col], ptrl->prev_n, 
-							ptrl->aux_b, 1, 
-							0, ptrn_prev->arr[ptrn_prev->num_layers-1].aux_b, 1);
-					next_col += ptrn_prev->arr[ptrn_prev->num_layers-1].n;
-				}
-			} else
-				img_view += ptrl->prev_n;
-		} else {
-			if (ptrn->out_id == -1)
-				for (i=0; i < ptrl->n; i++)
-					ptrl->err_b[i] = ptrl->a[i] - expected[i];
-			else
-				for (i=0; i < ptrl->n; i++)
-					ptrl->err_b[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
-			do {
-				cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1, ptrl->err_b, 1, (ptrl-1)->a, 1, &ptrl->err_w[0][0], ptrl->prev_n);
-				cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrl->prev_n, 1, &ptrl->w[0][0], ptrl->prev_n, ptrl->err_b, 1, 0, (ptrl-1)->err_b, 1);
-				ptrl--;
-				for (i=0; i < ptrl->n; i++)
-					ptrl->err_b[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
-			} while (ptrl > ptrn->arr);
-			cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1, ptrl->err_b, 1, ptrn->input_first? ptrn->input_first : img_view, 1, &ptrl->err_w[0][0], ptrl->prev_n);
-			if (ptrn->input_first) {
-				for (ptrn_prev = ptrn->in_nets[0]; ptrn_prev < ptrn->in_nets[0] + ptrn->num_in_nets; ptrn_prev++) {
-					cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrn_prev->arr[ptrn_prev->num_layers-1].n,
-							1, &ptrl->w[0][next_col], ptrl->prev_n, 
-							ptrl->err_b, 1, 
-							0, ptrn_prev->arr[ptrn_prev->num_layers-1].err_b, 1);
-					next_col += ptrn_prev->arr[ptrn_prev->num_layers-1].n;
-				}
-			} else
-				img_view += ptrl->prev_n;
-		}
+			}
+		} while (ptrl > ptrn->arr);
+		cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrberr, 1, ptrn->input_first? ptrn->input_first : img_view, 1, &ptrl->err_w[0][0], ptrl->prev_n);
+		if (ptrn->input_first) {
+			for (ptrn_prev = ptrn->in_nets[0]; ptrn_prev < ptrn->in_nets[0] + ptrn->num_in_nets; ptrn_prev++) {
+				cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrn_prev->arr[ptrn_prev->num_layers-1].n,
+						1, &ptrl->w[0][next_col], ptrl->prev_n, 
+						bignet.N > 1? ptrl->aux_b : ptrl->err_b, 
+						1, 
+						0,
+						bignet.N > 1? ptrn_prev->arr[ptrn_prev->num_layers-1].aux_b : ptrn_prev->arr[ptrn_prev->num_layers-1].err_b,
+					       	1);
+				next_col += ptrn_prev->arr[ptrn_prev->num_layers-1].n;
+			}
+		} else
+			img_view += ptrl->prev_n;
 	}
 }
 
@@ -337,25 +319,28 @@ float *img_view;
 		fprintf(stderr, "[read_png_file] File %s could not be opened for reading\n", name);
 		return 2;
 	}
-	fread(header, 1, 8, fp);
+	if (fread(header, 1, 8, fp) != 8) {
+		fputs("[read_png_file] Header reading error\n", stderr);
+		return 3;
+	}
 	if (png_sig_cmp(header, 0, 8)) {
 		fprintf(stderr, "[read_png_file] File %s is not recognized as a PNG image\n", name);
-		return 3;
+		return 4;
 	}
 	if (!(png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL))) {
 		END
 		fputs("[read_png_file] png_create_read_struct failed\n", stderr);
-		return 4;
+		return 5;
 	}
 	if (!(info = png_create_info_struct(png))) {
 		END
 		fputs("[read_png_file] png_create_info_struct failed\n", stderr);
-		return 5;
+		return 6;
 	}
 	if (setjmp(png_jmpbuf(png))) {
 		END
 		fputs("[read_png_file] init_io failed\n", stderr);
-		return 6;
+		return 7;
 	}
 	png_init_io(png, fp);
 	png_set_sig_bytes(png, 8);
@@ -376,7 +361,7 @@ float *img_view;
 	if (setjmp(png_jmpbuf(png))) {
 		END
 		fputs("[read_png_file] read_image failed\n", stderr);
-		return 7;
+		return 8;
 	}
 	rows = (png_bytepp) malloc(sizeof(png_bytep) * height);
 	for (i=0; i < height; i++)
@@ -408,51 +393,55 @@ struct create_network nets[];
 	struct net *ptrn;
 	struct create_network *ptrc;
 	int i, j, k;
-	unsigned *amount;
+	long unsigned *amount;
 	
 	bignet.num_nets = n;
 	bignet.back_on = 0;
 	if (verbose)
 		puts("Allocating memory to the neural network...");
 	bignet.arr = malloc(sizeof(struct net) * n);
-	for (ptrn=bignet.arr, ptrc=nets, i=0; i < n; ptrn++, ptrc++, i++) {
+	amount = calloc(bignet.num_nets, sizeof(long unsigned));
+	for (ptrn=bignet.arr, ptrc=nets; ptrn < bignet.arr + bignet.num_nets; ptrn++, ptrc++) {
 		ptrn->arr = malloc(sizeof(struct layer) * ptrc->num_layers);
 		ptrn->num_layers = ptrc->num_layers;
 		ptrn->out_id = ptrc->output;
 		ptrn->input_first = NULL;
-		for (j=0; j < ptrn->num_layers; j++) {
-			ptrn->arr[j].n = ptrc->neurons_per_layer[j];
-			ptrn->arr[j].prev_n = j? ptrc->neurons_per_layer[j-1] : ptrc->num_input;
-			ptrn->arr[j].w = malloc(sizeof(float*) * ptrn->arr[j].n);
-			*(ptrn->arr[j].w) = malloc(sizeof(float) * ptrn->arr[j].n * ptrn->arr[j].prev_n);
-			for (k=1; k < ptrn->arr[j].n; k++)
-				ptrn->arr[j].w[k] = *(ptrn->arr[j].w) + k * ptrn->arr[j].prev_n;
-			ptrn->arr[j].b = malloc(sizeof(float) * ptrn->arr[j].n);
-			ptrn->arr[j].z = malloc(sizeof(float) * ptrn->arr[j].n);
-			if (j < ptrn->num_layers-1 || ptrc->output == -1)
-				ptrn->arr[j].a = malloc(sizeof(float) * ptrn->arr[j].n);
+		ptrn->in_nets = malloc(sizeof(struct net*) * (bignet.num_nets - 1));
+		ptrn->num_in_nets = 0;
+		for (i=0; i < ptrn->num_layers; i++) {
+			ptrn->arr[i].n = ptrc->neurons_per_layer[i];
+			ptrn->arr[i].prev_n = i? ptrc->neurons_per_layer[i-1] : ptrc->num_input;
+			ptrn->arr[i].w = malloc(sizeof(float*) * ptrn->arr[i].n);
+			ptrn->arr[i].w[0] = malloc(sizeof(float) * ptrn->arr[i].n * ptrn->arr[i].prev_n);
+			for (k=1; k < ptrn->arr[i].n; k++)
+				ptrn->arr[i].w[k] = ptrn->arr[i].w[0] + k * ptrn->arr[i].prev_n;
+			ptrn->arr[i].b = malloc(sizeof(float) * ptrn->arr[i].n);
+			ptrn->arr[i].z = malloc(sizeof(float) * ptrn->arr[i].n);
+			/*aloca uma saida unica para a camada,
+			  menos para as ultimas camadas das redes de entrada*/
+			if (i < ptrn->num_layers-1 || ptrc->output == -1)
+				ptrn->arr[i].a = malloc(sizeof(float) * ptrn->arr[i].n);
 		}	
 		if ((ptrn->output_original = ptrn->out_id == -1)) {
 			network_output = ptrn->arr[ptrn->num_layers-1].a;
 			bignet.num_classes = ptrn->arr[ptrn->num_layers-1].n;
 		}
 	}
-	amount = calloc(bignet.num_nets - 1, sizeof(unsigned));
-	for (ptrn=bignet.arr, ptrc=nets, i=0; ptrn < bignet.arr + bignet.num_nets; ptrn++, ptrc++, i++) {
-		ptrn->in_nets = malloc(sizeof(struct net*) * (bignet.num_nets - 1));
-		ptrn->num_in_nets = 0;
-	}
-	for (ptrn=bignet.arr, ptrc=nets, i=0; ptrn < bignet.arr + bignet.num_nets - 1; ptrn++, ptrc++, i++) {
+	for (ptrn=bignet.arr; ptrn < bignet.arr + bignet.num_nets - 1; ptrn++) {
 		bignet.arr[ptrn->out_id].in_nets[bignet.arr[ptrn->out_id].num_in_nets++] = ptrn;
-		amount[ptrn->out_id] += ptrn->arr[ptrn->num_layers-1].n * sizeof(float);
+		amount[ptrn->out_id] += ptrn->arr[ptrn->num_layers-1].n;
 	}
 	for (ptrn=bignet.arr, i=0; ptrn < bignet.arr + bignet.num_nets; ptrn++, i++)
 		if (amount[i]) {
-			ptrn->in_nets[0]->arr[ptrn->in_nets[0]->num_layers-1].a = malloc(amount[i]);
+			/*aloca o total de bytes para a última camada da primeira rede que despeja nesta*/
+			ptrn->in_nets[0]->arr[ptrn->in_nets[0]->num_layers-1].a = malloc(amount[i] * sizeof(float));
 			ptrn->in_nets[0]->output_original = 1;
+			/*esta rede recebe como entrada a última camada da primeira rede*/
 			ptrn->input_first = ptrn->in_nets[0]->arr[ptrn->in_nets[0]->num_layers-1].a;
+			/*as demais redes despejam a partir de n neuronios da rede anterior*/
 			for (j=1; j < ptrn->num_in_nets; j++)
-				ptrn->in_nets[j]->arr[ptrn->in_nets[j]->num_layers-1].a = ptrn->in_nets[j-1]->arr[ptrn->in_nets[j-1]->num_layers-1].a + ptrn->in_nets[j]->arr[ptrn->in_nets[j]->num_layers-1].n;
+				ptrn->in_nets[j]->arr[ptrn->in_nets[j]->num_layers-1].a = ptrn->in_nets[j-1]->arr[ptrn->in_nets[j-1]->num_layers-1].a + 
+											  ptrn->in_nets[j-1]->arr[ptrn->in_nets[j-1]->num_layers-1].n;
 		}
 	free(amount);
 	if (verbose)
@@ -486,16 +475,25 @@ void load_weights(verbose)
 	if (verbose)
 		puts("Loading weights and biases to the network from: weights...");
 	if (!(fp = fopen("weights", "r"))) {
-		fputs("[load_weights] File weights could not be opened for reading.\n", stderr);
+		fputs("[load_weights] File weights could not be opened for reading\n", stderr);
 		return;
 	}
-	fscanf(fp, "%x\n", &i);
+	if (fscanf(fp, "%x\n", &i) != 1) {
+		fputs("[load_weights] Unable to read the number of networks\n", stderr);
+		return;
+	}
 	nets = malloc(sizeof(struct create_network) * i);
 	for (ptrc=nets; ptrc < nets + i; ptrc++) {
-		fscanf(fp, "%x %hhx %hd %x", &ptrc->num_layers, &ptrc->source, &ptrc->output, &ptrc->num_input);
-		ptrc->neurons_per_layer = malloc(sizeof(short) * ptrc->num_layers);
+		if (fscanf(fp, "%x %hhx %hd %x", &ptrc->num_layers, &ptrc->source, &ptrc->output, &ptrc->num_input) != 4) {
+			fputs("[load_weights] Unable to read network info\n", stderr);
+			return;
+		}
+		ptrc->neurons_per_layer = malloc(sizeof(unsigned) * ptrc->num_layers);
 		for (j=0; j < ptrc->num_layers; j++)
-			fscanf(fp, " %x", &ptrc->neurons_per_layer[j]);
+			if (fscanf(fp, " %x", &ptrc->neurons_per_layer[j]) != 1) {
+				fprintf(stderr, "[load_weights] Unable to read number of neurons in layer %d\n", j+1);
+				return;
+			}
 		fgetc(fp);
 	}
 	init_net_topology(nets, i, verbose);
@@ -506,8 +504,14 @@ void load_weights(verbose)
 		for (ptrl=ptrn->arr; ptrl < ptrn->arr + ptrn->num_layers; ptrl++)
 			for (i=0; i < ptrl->n; i++) {
 				for (j=0; j < ptrl->prev_n; j++)
-					fscanf(fp, "%a\n", &ptrl->w[i][j]);
-				fscanf(fp, "%a\n", &ptrl->b[i]);
+					if (fscanf(fp, "%a\n", &ptrl->w[i][j]) != 1) {
+						fprintf(stderr, "[load_weights] Unable to read the %d weight of neuron %d\n", j+1, i+1);
+						return;
+					}
+				if (fscanf(fp, "%a\n", &ptrl->b[i]) != 1) {
+					fprintf(stderr, "[load_weights] Unable to read the bias of neuron %d\n", i+1);
+					return;
+				}
 			}
 	fclose(fp);
 	if (verbose)
@@ -554,13 +558,14 @@ void save_weights()
 }
 
 float hit(class, predi, predv)
-float class[], *predv;
-unsigned char *predi;
+int *predi;
+float *predv;
 {
 	int i, bigi;
 	float big;
-	
-	for (big=i=0; i < bignet.num_classes; i++)
+
+	bigi = big = 0;
+	for (i=0; i < bignet.num_classes; i++)
 		if (big < network_output[i]) {
 			big = network_output[i];
 			bigi = i;
@@ -569,16 +574,15 @@ unsigned char *predi;
 		*predi = bigi; 
 	if (predv)
 		*predv = big; 
-	return class? class[bigi] : 0;
+	return class == bigi;
 }
 
 float cross_entropy(class)
-float class[];
 {
 	int i;
 	float c;
 	
 	for (c=i=0; i < bignet.num_classes; i++)
-		c += class[i] * log(network_output[i]);
+		c += (i == class) * log(network_output[i]);
 	return -c;
 }

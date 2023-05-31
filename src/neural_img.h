@@ -44,8 +44,8 @@ struct create_network {
 extern float *network_output;
 
 int read_png_file(char[], float *, int);
-float hit(float[], unsigned char*, float*);
-float cross_entropy(float[]);
+float hit(int, int*, float*);
+float cross_entropy(int);
 void init_net_topology(struct create_network[], int, int);
 void init_random_weights();
 void load_weights(int);
@@ -53,6 +53,6 @@ void save_weights();
 void run(float*);
 void ini_backpr(int);
 void clear_backpr();
-void backpr(float[], float*);
+void backpr(float*, int);
 void apply_backpr();
 void end_backpr();

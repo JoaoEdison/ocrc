@@ -181,8 +181,7 @@ char name[];
 	static float img[INPUT_QTT];
 	char view_name[PATH_MAX + NAME_MAX];
 	float pred;
-	int error, i, j, cn;
-	unsigned char class;
+	int error, i, j, cn, class;
 
 	if ((error = read_png_file(name, img, flags.verbose))) {
 		fprintf(stderr, "[read_img] Error: %d. Cannot read file: %s\n", error, name);
@@ -200,7 +199,7 @@ char name[];
 		write_png(img, view_name);
 	}
 	run(img);
-	hit(NULL, &class, &pred);
+	hit(-1, &class, &pred);
 	if (flags.histogram)
 		histogram[class]++;
 	if (flags.view) {
