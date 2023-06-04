@@ -24,19 +24,19 @@ The `weights` file contains the weights and biases of the network, which have al
 
 Run makefile in `src` folder. You will get three executable codes:
 
-* *init_net.out*, the program that generate the raw neural network.
+* `init_net.out`, the program that generate the raw neural network.
 
-* *training.out*, the training program.
+* `training.out`, the training program.
 
-* *view.out*, one program to see the results.
+* `view.out`, a program to see the results.
 
-These programs look for the `weights` file in the current working directory to save and load the neural network.
+These programs look for the `weights` file, created by `init_net.out`, in the current working directory to save and load the neural network.
 
 ## Usage
 
-Firstly, it is necessary to configure the neural network format in the `init_net.c` and recompile it with the make command. Afterwards, `init_net.out` is called to generate the network, in the `weights` file.
+You can configure the neural network format in the `init_net.c` and recompile it with the make command. Afterwards, `init_net.out` is called to generate the network, in the `weights` file. Or use the already trained `weights` file that comes in with it. (WARNING: this program overwrites `weights` on every call)
 
-`training.out` has several training options, feel free to try them out. It is necessary to inform the absolute path for the training and test directories, respectively, in the `dataset_paths` and `test_paths` files that you need to create, they need read permissions. One path must be informed per line, each of which corresponds to the class of its line in the file.
+`training.out` has several training options, feel free to try them out. It is necessary to inform the absolute path for the training and test directories, respectively, in the `dataset_paths` and `test_paths` files that you need to create, they need read permissions. One absolute path must be informed per line, each of which corresponds to the class of its line in the file.
 
 The `view.out` program is used to check the recognitions made by the network and also has several options.
 
