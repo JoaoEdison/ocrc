@@ -151,6 +151,7 @@ float *img_view;
 	float *ptrberr;
 	int i, next_col;
 	
+	img_view += INPUT_QTT;		
 	next_col = 0;	
 	for (ptrn = bignet.num_nets - 1 + bignet.arr; ptrn >= bignet.arr; ptrn--) {
 		ptrl = ptrn->num_layers - 1 + ptrn->arr;
@@ -166,7 +167,7 @@ float *img_view;
 			for (i=0; i < ptrl->n; i++)
 				ptrl->err_b[i] += ptrl->aux_b[i] / bignet.N;
 		/*derivada parcial do custo para o peso*/
-		do {
+		while (ptrl > ptrn->arr) {
 			cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrberr, 1, (ptrl-1)->a, 1, &ptrl->err_w[0][0], ptrl->prev_n);
 			cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrl->prev_n, 1, &ptrl->w[0][0], ptrl->prev_n, ptrberr, 1, 0,
 				       bignet.N > 1? (ptrl-1)->aux_b : (ptrl-1)->err_b, 1);
@@ -177,9 +178,10 @@ float *img_view;
 				if (bignet.N > 1)
 					ptrl->err_b[i] += ptrl->aux_b[i] / bignet.N;
 			}
-		} while (ptrl > ptrn->arr);
-		cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrberr, 1, ptrn->input_first? ptrn->input_first : img_view, 1, &ptrl->err_w[0][0], ptrl->prev_n);
+		}
+		cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrberr, 1, ptrn->input_first? ptrn->input_first : (img_view -= ptrn->arr->prev_n), 1, &ptrl->err_w[0][0], ptrl->prev_n);
 		if (ptrn->input_first) {
+			/*calcula o erro para as redes superiores, armazena em err_b ou aux_b para a ultima camada da rede superior*/
 			for (ptrn_prev = ptrn->in_nets[0]; ptrn_prev < ptrn->in_nets[0] + ptrn->num_in_nets; ptrn_prev++) {
 				cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrn_prev->arr[ptrn_prev->num_layers-1].n,
 						1, &ptrl->w[0][next_col], ptrl->prev_n, 
@@ -190,8 +192,7 @@ float *img_view;
 					       	1);
 				next_col += ptrn_prev->arr[ptrn_prev->num_layers-1].n;
 			}
-		} else
-			img_view += ptrl->prev_n;
+		}
 	}
 }
 

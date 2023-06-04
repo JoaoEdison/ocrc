@@ -18,13 +18,13 @@
 
 #include "neural_img.h"
 
-#define END_LAYER_1 18
-#define END_LAYER_2 18
+#define END_LAYER_1 128
+#define END_LAYER_2 METADATA_QTT
 #define CONNECTION (END_LAYER_1 + END_LAYER_2)
 
-unsigned layers1[] = {128, 64, 64, END_LAYER_1};
-unsigned layers2[] = {28, 28, 28, END_LAYER_2};
-unsigned layers3[] = {36, 36, MAX_CLASSES};
+unsigned layers1[] = {END_LAYER_1};
+unsigned layers2[] = {END_LAYER_2};
+unsigned layers3[] = {CONNECTION, CONNECTION, 128, 64, 36, MAX_CLASSES};
 
 struct create_network nets[] = {
 	{layers1, sizeof(layers1)/sizeof(unsigned), FEATURE_QTT * AREA_IMG, 1,  2},
