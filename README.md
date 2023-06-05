@@ -8,11 +8,11 @@ AI for <b>O</b>ptical <b>C</b>haracter <b>R</b>ecognition (<b>OCR</b>) written i
 
 ## Overview
 
-Is a program that trains an artificial neural network based on a set of images, subsequently recognizes new images provided to the network.
+A program that trains an artificial neural network based on a set of images and subsequently recognizes new images provided to the network.
 
-It is only possible to read 128x128 png images, grayscale or pallete types. Until now, it only runs on Linux.
+It is only possible to read grayscale or pallete type PNG images with dimensions of 128x128 pixels. Until now, it only runs on Linux.
 
-The `weights` file contains the weights and biases of the network, which have already been trained for recognition on [Chars74K](http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/) EnglishFnt dataset, more specifically on the first half of the first 36 samples.
+The `weights` file contains pre-trained weights and biases of the neural network. These weights were trained for recognition using the [Chars74K](http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/) EnglishFnt dataset, specifically on the first half of the first 36 samples.
 
 ## Requirements
 
@@ -24,21 +24,21 @@ The `weights` file contains the weights and biases of the network, which have al
 
 Run makefile in `src` folder. You will get three executable codes:
 
-* `init_net.out`, the program that generate the raw neural network.
+* `init_net.out`: this generates the raw neural network.
 
-* `training.out`, the training program.
+* `training.out`: the training program.
 
-* `view.out`, a program to see the results.
+* `view.out`: a program to view the results.
 
-These programs look for the `weights` file, created by `init_net.out`, in the current working directory to save and load the neural network.
+These programs look for the `weights` file in the current working directory to save and load the neural network.
 
 ## Usage
 
-You can configure the neural network format in the `init_net.c` and recompile it with the make command. Afterwards, `init_net.out` is called to generate the network, in the `weights` file. Or use the already trained `weights` file that comes in with it. (WARNING: this program overwrites `weights` on every call)
+To configure the neural network format, modify the `init_net.c` and recompile it using the make command. After recompiling, execute `init_net.out` to generate the raw network, wich will be saved in `weights` (WARNING: running the program will overwrites `weights` on every call). Alternatively, you can use the provided pre-trained `weights`.
 
-`training.out` has several training options, feel free to try them out. It is necessary to inform the absolute path for the training and test directories, respectively, in the `dataset_paths` and `test_paths` files that you need to create, they need read permissions. One absolute path must be informed per line, each of which corresponds to the class of its line in the file.
+`training.out` offers several training options. Please feel free to exlore and experiment with them. To use the program, create two files: `dataset_paths` and `test_paths`. In the `dataset_paths` file, specify the absolute paths to the training directories, one path per line, corresponding to each class. Do the same for `test_paths`, where paths are to test directories. Ensure that these files have read permissions.
 
-The `view.out` program is used to check the recognitions made by the network and also has several options.
+The `view.out` program allows you to inspect the network's recognition results. It also offers various options for visualization.
 
 ## License
 

@@ -35,6 +35,12 @@
 #define INPUT_QTT (FEATURE_QTT * AREA_IMG + METADATA_QTT)
 #define MAX_CLASSES 36
 
+/* `neurons_per_layer`: This vector defines the number of neurons at each layer. (Feedforward sense: first to last)
+ * `num_layers`: Indicates the total number of layers in the net
+ * `num_input`: Represents the total number of inputs in the network
+ * `source`: Specifies whether the net receives inputs from convolution
+ * `output`: Specifies the index of the net that receives the output of the current net as input. (-1 indicates that the output is the last layer of the network)
+ * */
 struct create_network {
 	unsigned *neurons_per_layer, num_layers, num_input;
 	unsigned char source;

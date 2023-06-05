@@ -26,6 +26,14 @@ unsigned layers1[] = {END_LAYER_1};
 unsigned layers2[] = {END_LAYER_2};
 unsigned layers3[] = {CONNECTION, CONNECTION, 128, 64, 36, MAX_CLASSES};
 
+/*
+ * `create_network` array must adhere to the following rules:
+ *   1) If multiple nets receive inputs from convolution, the nets listed first in the array receive inputs in the same order.
+ *   2) Only one net can serve as the final output (-1) of the network.
+ *   3) To specify that a net receives inputs from other nets: 
+ *   	  In the `output` of each net that sends inputs, you must indicate the index of the receiving net.
+ *	  The receiving net must set its `num_input` to the sum of the lats layers of the source nets.
+ * */
 struct create_network nets[] = {
 	{layers1, sizeof(layers1)/sizeof(unsigned), FEATURE_QTT * AREA_IMG, 1,  2},
 	{layers2, sizeof(layers2)/sizeof(unsigned),           METADATA_QTT, 1,  2},
