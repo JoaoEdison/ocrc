@@ -42,14 +42,6 @@ static struct {
 
 float *network_output;
 
-#define ACTIVATION_FN(X) tanh(X)
-#define DERIVATIVE_ACTIVATION_FN(Z) (1 - powf(tanh(Z), 2))
-
-/*
-#define ACTIVATION_FN(X) (1 / (1 + exp(-X)))
-#define DERIVATIVE_ACTIVATION_FN(Z) (ACTIVATION_FN(Z) * (1 - ACTIVATION_FN(Z))) 
-*/
-
 void run(img_view)
 float *img_view;
 {
@@ -166,7 +158,7 @@ float *img_view;
 		if (bignet.N > 1)
 			for (i=0; i < ptrl->n; i++)
 				ptrl->err_b[i] += ptrl->aux_b[i] / bignet.N;
-		/*derivada parcial do custo para o peso*/
+		/*partial derivative of cost for weight*/
 		while (ptrl > ptrn->arr) {
 			cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrberr, 1, (ptrl-1)->a, 1, &ptrl->err_w[0][0], ptrl->prev_n);
 			cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrl->prev_n, 1, &ptrl->w[0][0], ptrl->prev_n, ptrberr, 1, 0,
@@ -181,7 +173,7 @@ float *img_view;
 		}
 		cblas_sger(CblasRowMajor, ptrl->n, ptrl->prev_n, 1/bignet.N, ptrberr, 1, ptrn->input_first? ptrn->input_first : (img_view -= ptrn->arr->prev_n), 1, &ptrl->err_w[0][0], ptrl->prev_n);
 		if (ptrn->input_first) {
-			/*calcula o erro para as redes superiores, armazena em err_b ou aux_b para a ultima camada da rede superior*/
+			/*this calculates the error for upper networks, stores it in err_b or aux_b for the last layer of upper network*/
 			for (ptrn_prev = ptrn->in_nets[0]; ptrn_prev < ptrn->in_nets[0] + ptrn->num_in_nets; ptrn_prev++) {
 				cblas_sgemv(CblasRowMajor, CblasTrans, ptrl->n, ptrn_prev->arr[ptrn_prev->num_layers-1].n,
 						1, &ptrl->w[0][next_col], ptrl->prev_n, 
@@ -196,8 +188,6 @@ float *img_view;
 	}
 }
 
-#define RATE 0.1
-#define MOMENTUM 0.3
 #define NEW_CHANGE(ERR, CHA) ERR * RATE + MOMENTUM * CHA
 
 void apply_backpr()
@@ -418,8 +408,8 @@ struct create_network nets[];
 				ptrn->arr[i].w[k] = ptrn->arr[i].w[0] + k * ptrn->arr[i].prev_n;
 			ptrn->arr[i].b = malloc(sizeof(float) * ptrn->arr[i].n);
 			ptrn->arr[i].z = malloc(sizeof(float) * ptrn->arr[i].n);
-			/*aloca uma saida unica para a camada,
-			  menos para as ultimas camadas das redes de entrada*/
+			/*allocates a unique output for the layer,
+			 *except for the last layers of input networks */
 			if (i < ptrn->num_layers-1 || ptrc->output == -1)
 				ptrn->arr[i].a = malloc(sizeof(float) * ptrn->arr[i].n);
 		}	
@@ -434,12 +424,12 @@ struct create_network nets[];
 	}
 	for (ptrn=bignet.arr, i=0; ptrn < bignet.arr + bignet.num_nets; ptrn++, i++)
 		if (amount[i]) {
-			/*aloca o total de bytes para a última camada da primeira rede que despeja nesta*/
+			/*the first net that dumps into this gets the allocate block of the total*/
 			ptrn->in_nets[0]->arr[ptrn->in_nets[0]->num_layers-1].a = malloc(amount[i] * sizeof(float));
 			ptrn->in_nets[0]->output_original = 1;
-			/*esta rede recebe como entrada a última camada da primeira rede*/
+			/*then this network receives as input the block of that last layer*/
 			ptrn->input_first = ptrn->in_nets[0]->arr[ptrn->in_nets[0]->num_layers-1].a;
-			/*as demais redes despejam a partir de n neuronios da rede anterior*/
+			/*other networks put from the number of neurons of the previous net*/
 			for (j=1; j < ptrn->num_in_nets; j++)
 				ptrn->in_nets[j]->arr[ptrn->in_nets[j]->num_layers-1].a = ptrn->in_nets[j-1]->arr[ptrn->in_nets[j-1]->num_layers-1].a + 
 											  ptrn->in_nets[j-1]->arr[ptrn->in_nets[j-1]->num_layers-1].n;
@@ -565,8 +555,9 @@ float *predv;
 	int i, bigi;
 	float big;
 
-	bigi = big = 0;
-	for (i=0; i < bignet.num_classes; i++)
+	bigi = 0;
+	big = network_output[0];
+	for (i=1; i < bignet.num_classes; i++)
 		if (big < network_output[i]) {
 			big = network_output[i];
 			bigi = i;
