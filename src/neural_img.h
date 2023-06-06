@@ -64,82 +64,85 @@ struct create_network {
 extern float *network_output;
 
 /* read_png_file:
- * 	Reads 'name' with fopen and verifies if it is an png file.
- * 	Returns 0 if succeeded correctly and 'img_view' gets the output.
- * 	Else returns a value of the error and prints a message.
- * 	Is apllied a convolution and metadata is extracted.
- * 	'verbose' shows png characteristics of the file. 
- * 	'img_view' needs to be INPUT_QTT len.
+ * 	Reads 'name' using fopen and verifies if it is a PNG file.
+ * 	The function applies convolution to the image and extracts metadata.
+ * 	Returns 0 if the file is successfully read and the output is stored in 'img_view'.
+ * 	Else returns an error value and prints an error message.
+ * 	If 'verbose' is not zero, it displays the characteristics of the file. 
+ * 	'img_view' should have a length of INPUT_QTT.
  * */
 int read_png_file(char name[], float *img_view, int verbose);
 
 /* hit:
- * 	Check if the greatest propability predicted by the net is equals to expected 'class'.
- * 	Returns 1 if true and 0 if false. This needs to be float to use this function in 
-  	pointers that uses 'cross_entropy' too.
- * 	'predi' gets the class index predicted by the net and 'predv' gets the probability. 
+ * 	Checks if the highest probability predicted by the net is equal to the expected 'class'.
+ * 	Returns 1 if true and 0 if false. This needs to be float to enable 
+ 	using with pointers that also use 'cross_entropy'.
+ * 	'predi' receives the class index predicted by the net.
+ * 	'predv' receives the corresponding probability.
  * */
 float hit(int class, int *predi, float *predv);
 
 /* cross_entropy:
- * 	Computes the Cross Entropy in nats of the net output.
+ * 	Calculates the Cross Entropy, measured in nats, of the net output.
  * 	'class' is the index of the expected class.
  * */
 float cross_entropy(int class);
 
 /* init_net_topology:
- * 	Use 'nets' array to assemble the network.
+ * 	Uses 'nets' array to assemble the network.
  * 	'n' is the number of nets in the network.
- * 	'verbose' shows messages that says that this begins and ends.
+ * 	If 'verbose' is true, it displays messages indicating the start and end.	
  * */
 void init_net_topology(struct create_network nets[], int n, int verbose);
 
 /* init_random_weights:
- * 	All the bias and weights of the network gets random values.
- * 	The net needs to be loaded in memory by 'load_weights' or 'init_net_topology'.
+ * 	Assigns random values to biases and weights of the network.
+ * 	Is assumed that net has already been loaded into memory using 'load_weights' or
+  	'init_net_topology' functions.
  * */
 void init_random_weights();
 
 /* load_weights:
- * 	reads `weights` file and loads the network.
- * 	'verbose' shows messages that inform that this begin and end.
+ * 	Reads `weights` file and loads the network.
+ * 	If 'verbose', displays messages indicating the start and end.
  * */
 void load_weights(int verbose);
 
 /* save_weights:
- * 	write in `weights` file the network.
+ * 	Writes in `weights` file the network.
  * */
 void save_weights();
 
 /* run:
- * 	Computes feedforward using 'img_view' and 'network_output' gets the output of the network
+ * 	Computes feedforward using 'img_view' and 'network_output' receives the output of the network.
  * */
 void run(float *img_view);
 
 /* ini_backpr:
- * 	Allocates memory necessary to make the backpropagation.
+ * 	Allocates the necessary memory for backpropagation.
  * 	'n' is used to calculate the mean of the samples in one batch.
-  	If this is 1 then no mean is calculated.
+  	If this is equal to 1, no mean is calculated.
  * */
 void ini_backpr(int n);
 
 /* clear_backpr:
- *	Clean the values stored in a backpropagation iteration.		
+ *	Clears the values stored during a backpropagation iteration.		
  * */
 void clear_backpr();
 
 /* backpr:
- *	Computes the backpropagation using the sample 'img_view'. It needs 'run' before!
+ *	Performs the backpropagation using the sample 'img_view'.
+ *	Prior to using this function, 'run' function needs to be executed.
  *	'expected' is the index of the expected class output.
  * */
 void backpr(float *img_view, int expected);
 
 /* apply_backpr:
- * 	Modify the weights and biases using the gradients of error get by 'backpr' and momentum
+ * 	Modifies the weights and biases using the gradients of error obtained from 'backpr' and applies momentum.
  * */
 void apply_backpr();
 
 /* end_backpr:
- * 	Deallocates memory of the backpropagation.
+ * 	Deallocates memory used during the backpropagation.
  * */
 void end_backpr();
