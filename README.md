@@ -40,6 +40,20 @@ To configure the neural network format, modify the `init_net.c` and recompile it
 
 The `view.out` program allows you to inspect the network's recognition results. It also offers various options for visualization.
 
+### Quick Test
+
+If you use Ubuntu, try:
+
+```console
+sudo apt install libpng-dev
+sudo apt install libatlas-base-dev
+git clone https://github.com/JoaoEdison/OCRC.git
+cd OCRC/src/
+make
+unzip weights.zip
+./view.out -d ../test
+```
+
 ## License
 
 This project is licensed under [GPL-3.0](https://raw.githubusercontent.com/Illumina/licenses/master/gpl-3.0.txt). 
