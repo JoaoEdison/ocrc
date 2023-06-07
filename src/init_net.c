@@ -19,25 +19,25 @@
 #include "neural_img.h"
 
 #define END_LAYER_1 64
-#define END_LAYER_2 METADATA_QTT
+#define END_LAYER_2 28
 #define CONNECTION (END_LAYER_1 + END_LAYER_2)
 
 unsigned layers1[] = {END_LAYER_1};
 unsigned layers2[] = {END_LAYER_2};
 unsigned layers3[] = {CONNECTION, CONNECTION, 64, 64, 36, MAX_CLASSES};
 
-/*
- * `create_network` array must adhere to the following rules:
- *   1) If multiple nets receive inputs from convolution, the nets listed first in the array receive inputs in the same order.
+/* 'create_network' array must adhere to the following rules:
+ *   1) The order of nets in the array corresponds to the order in which they receive inputs from convolution or from other net.
+     'num_input' determines the number of inputs that net receives.
  *   2) Only one net can serve as the final output (-1) of the network.
  *   3) To specify that a net receives inputs from other nets: 
- *   	  In the `output` of each net that sends inputs, you must indicate the index of the receiving net.
- *	  The receiving net must set its `num_input` to the sum of the lats layers of the source nets.
+ *   	  In the 'output' of each net that sends inputs, you must indicate the index of the receiving net.
+ *	  The receiving net must set its 'num_input' to the sum of the lasts layers of the source nets.
  * */
 struct create_network nets[] = {
-	{layers1, sizeof(layers1)/sizeof(unsigned), FEATURE_QTT * AREA_IMG, 1,  2},
-	{layers2, sizeof(layers2)/sizeof(unsigned),           METADATA_QTT, 1,  2},
-	{layers3, sizeof(layers3)/sizeof(unsigned),             CONNECTION, 0, -1}
+	{layers1, sizeof(layers1)/sizeof(unsigned), FEATURE_QTT * AREA_IMG + DIM_POOL * 2, 1,  2},
+	{layers2, sizeof(layers2)/sizeof(unsigned),                                    28, 1,  2},
+	{layers3, sizeof(layers3)/sizeof(unsigned),                            CONNECTION, 0, -1}
 };
 
 main()

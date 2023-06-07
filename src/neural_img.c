@@ -225,6 +225,23 @@ void apply_backpr()
 		} \
 	}
 
+/* Gets this points, calculates the Manhattan distances beetween
+   and divides by the main diagonal. Stores it in the end of img_view.
+ *          57
+ *          ||
+ *          vv
+ *      1-> /\ <-2
+ *         /  \
+ *        /    \
+ *       /------\
+ *      /        \
+ * 3-> /          \ <-4
+ *     ^          ^
+ *     |          |
+ *     6          8
+ * Sum the cols, make the mean. Sum the rows, make the mean.
+ * Stores both after the images area (FEATURE_QTT * AREA_IMG).
+ * */
 static void metadata(img_view, img_in, dim_in)
 float *img_view, *img_in;
 {
@@ -232,31 +249,53 @@ float *img_view, *img_in;
 	int i, j, k, found;
 	
 	k = found = 0;
+	/*1*/
 	for (i=0; i < dim_in; i++) {
 		for (j=0; j < dim_in; j++)
 			FIND_EDGES
+	/*2*/
 	for (i=0; i < dim_in; i++) {
 		for (j=dim_in-1; j >= 0; j--)
 			FIND_EDGES
+	/*3*/
 	for (i=dim_in-1; i >= 0; i--) {
 		for (j=0; j < dim_in; j++)
 			FIND_EDGES
+	/*4*/
 	for (i=dim_in-1; i >= 0; i--) {
 		for (j=dim_in-1; j >= 0; j--)
 			FIND_EDGES
+	/*5*/
 	for (j=0; j < dim_in; j++) {
 		for (i=0; i < dim_in; i++)
 			FIND_EDGES
+	/*6*/
 	for (j=0; j < dim_in; j++) {
 		for (i=dim_in-1; i >= 0; i--)
 			FIND_EDGES
+	/*7*/
 	for (j=dim_in-1; j >= 0; j--) {
 		for (i=0; i < dim_in; i++)
 			FIND_EDGES
+	/*8*/
 	for (j=dim_in-1; j >= 0; j--) {
 		for (i=dim_in-1; i >= 0; i--)
 			FIND_EDGES
 	k = FEATURE_QTT * AREA_IMG;
+	for (i=0; i < dim_in; i++) {
+		img_view[k] = 0;
+		for (j=0; j < dim_in; j++)
+			img_view[k] += img_in[i * dim_in + j];
+		img_view[k] /= dim_in;
+		k++;
+	}
+	for (j=0; j < dim_in; j++) {
+		img_view[k] = 0;
+		for (i=0; i < dim_in; i++)
+			img_view[k] += img_in[i * dim_in + j];
+		img_view[k] /= dim_in;
+		k++;
+	}
 	for (i=0; i < 8; i++)
 		for (j=i+1; j < 8; j++)
 			img_view[k++] = (abs(points[i][0] - points[j][0]) + abs(points[i][1] - points[j][1])) / (dim_in * 2.0);
