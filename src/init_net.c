@@ -24,7 +24,7 @@
 
 unsigned layers1[] = {END_LAYER_1};
 unsigned layers2[] = {END_LAYER_2};
-unsigned layers3[] = {CONNECTION, CONNECTION, 64, 64, 36, MAX_CLASSES};
+unsigned layers3[] = {64, MAX_CLASSES};
 
 /* 'create_network' array must adhere to the following rules:
  *   1) The order of nets in the array corresponds to the order in which they receive inputs from convolution or from other net.

@@ -44,7 +44,7 @@
 */
 
 /*Learning rate and momentum*/
-#define RATE 0.5
+#define RATE 1
 #define MOMENTUM 0.3
 
 /* 'neurons_per_layer': This vector defines the number of neurons at each layer. 
