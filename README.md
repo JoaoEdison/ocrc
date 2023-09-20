@@ -6,7 +6,7 @@ AI for <b>O</b>ptical <b>C</b>haracter <b>R</b>ecognition (<b>OCR</b>) written i
 
 </div>
 
-<img align="middle" src="https://github.com/JoaoEdison/ocrc/blob/main/architecture.png">
+<img src="https://github.com/JoaoEdison/ocrc/blob/main/architecture.png" style="margin:auto;">
 
 ## Overview
 
