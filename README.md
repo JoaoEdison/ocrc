@@ -4,9 +4,9 @@
 
 AI for <b>O</b>ptical <b>C</b>haracter <b>R</b>ecognition (<b>OCR</b>) written in <b>C</b>.
 
-</div>
+<img src="https://github.com/JoaoEdison/ocrc/blob/main/architecture.png">
 
-<img src="https://github.com/JoaoEdison/ocrc/blob/main/architecture.png" style="margin:auto;">
+</div>
 
 ## Overview
 
