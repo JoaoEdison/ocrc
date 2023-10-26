@@ -20,8 +20,6 @@ The `weights` file contains pre-trained weights and biases of the neural network
 
 * [libpng](http://www.libpng.org) >= 1.6.37
 
-* CBLAS
-
 ## Compiling
 
 Run makefile in `src` folder. You will get three executable codes:
@@ -42,13 +40,17 @@ To configure the neural network format, modify the `init_net.c` and recompile it
 
 The `view.out` program allows you to inspect the network's recognition results. It also offers various options for visualization.
 
+The file `weights` was obtained with command:
+```console
+./training.out 1000 -metric=c -method=a
+```
+
 ### Quick Test
 
 If you use Ubuntu, try:
 
 ```console
 sudo apt install libpng-dev
-sudo apt install libatlas-base-dev
 git clone https://github.com/JoaoEdison/OCRC.git
 cd OCRC/src/
 make
@@ -58,4 +60,4 @@ unzip weights.zip
 
 ## License
 
-This project is licensed under [GPL-3.0](https://raw.githubusercontent.com/Illumina/licenses/master/gpl-3.0.txt). 
+This project is licensed under [GPL-3.0](https://raw.githubusercontent.com/JoaoEdison/ocrc/main/LICENSE). 

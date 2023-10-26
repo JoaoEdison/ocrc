@@ -34,7 +34,7 @@ unsigned layers3[] = {64, MAX_CLASSES};
  *   	  In the 'output' of each net that sends inputs, you must indicate the index of the receiving net.
  *	  The receiving net must set its 'num_input' to the sum of the lasts layers of the source nets.
  * */
-struct create_network nets[] = {
+create_network_arr nets = {
 	{layers1, sizeof(layers1)/sizeof(unsigned), FEATURE_QTT * AREA_IMG + DIM_POOL * 2, 1,  2},
 	{layers2, sizeof(layers2)/sizeof(unsigned),                                    28, 1,  2},
 	{layers3, sizeof(layers3)/sizeof(unsigned),                            CONNECTION, 0, -1}
@@ -42,7 +42,9 @@ struct create_network nets[] = {
 
 main()
 {
-	init_net_topology(nets, sizeof(nets)/sizeof(struct create_network), 1);
-	init_random_weights();
-	save_weights();
+	bignet_ptr model;
+
+	model = init_net_topology(nets, sizeof(nets)/sizeof(create_network), 1);
+	init_random_weights(model);
+	save_weights(model, "weights");
 }

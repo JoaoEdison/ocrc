@@ -26,6 +26,8 @@
 
 char cwd[PATH_MAX];
 
+bignet_ptr model;
+
 main(argc, argv)
 char *argv[];
 {
@@ -76,10 +78,10 @@ char *argv[];
 			return 3;
 		}
 	}
-	load_weights(1);
+	model = load_weights("weights", 1);
 	if ((error = train(epochs, method_n, method_fn, metric, "dataset_paths", "test_paths")))
 		return error;
-	save_weights();
+	save_weights(model, "weights");
 	return 0;
 }
 
@@ -88,16 +90,21 @@ struct vector_view {
 	int end, size;
 };
 
+float expected[MAX_CLASSES];
+
 void train_all(train)
 struct vector_view train[];
 {
 	int i, j;
-
+	
 	for (i=0; i < MAX_CLASSES; i++)
-		for (j=0; j < train[i].end; j++) {
-			run(train[i].arr[j]);
-			backpr(train[i].arr[j], i);
-		}
+		expected[i] = 0.0f;
+	for (i=0; i < MAX_CLASSES;) {
+		expected[i] = 1.0f;
+		for (j=0; j < train[i].end; j++)
+			backpr(model, train[i].arr[j], expected);
+		expected[i++] = 0.0f;
+	}
 }
 
 void train_stochastic(train)
@@ -105,12 +112,13 @@ struct vector_view train[];
 {
 	int i, j;
 	struct vector_view *ptrv;
-
-	i = rand() % MAX_CLASSES;
+	
+	for (i=0; i < MAX_CLASSES; i++)
+		expected[i] = 0.0f;
+	expected[(i = rand() % MAX_CLASSES)] = 1.0f;
 	ptrv = &train[i];
 	j = rand() % ptrv->end;
-	run(ptrv->arr[j]);
-	backpr(ptrv->arr[j], i);
+	backpr(model, ptrv->arr[j], expected);
 }
 
 int batch_size;
@@ -223,14 +231,14 @@ char fname_training[], fname_test[];
 	else
 		srand(time(NULL));
 	batch_size = method_n;
-	ini_backpr(method_n);
+	ini_backpr(model, method_n);
 	pthread_mutex_init(&mutex, NULL);
 	pthread_create(&tid, NULL, stop_training, NULL);
 	gettimeofday(&begin, 0);
 	for (i=0; i < epochs; i++) {
-		clear_backpr();
+		clear_backpr(model);
 		method_fn(train_views);
-		apply_backpr();
+		apply_backpr(model);
 		if ((metric_fn && method_n != 1) || (metric_fn && i % CLOCK == 0))
 			printf("%.3f (test) %.3f (training) [%d/%d]\n", avg(metric_fn, test_count, test_views), avg(metric_fn, train_count, train_views), i+1, epochs);
 		if (state != 's')
@@ -250,7 +258,7 @@ char fname_training[], fname_test[];
 	pthread_join(tid, NULL);
 	pthread_mutex_unlock(&mutex);
 	pthread_mutex_destroy(&mutex);
-	end_backpr();
+	end_backpr(model);
 	for (i=0; i < MAX_CLASSES; i++) {
 		for (j=0; j < test_views[i].end; j++)
 			free(test_views[i].arr[j]);
@@ -271,8 +279,8 @@ struct vector_view views[];
 	
 	for (sum=i=0; i < MAX_CLASSES; i++)
 		for (j=0; j < views[i].end; j++) {
-			run(views[i].arr[j]);
-			sum += metric_fn(i, NULL, NULL);
+			run(model, views[i].arr[j]);
+			sum += metric_fn(model, i, NULL, NULL);
 		}
 	return sum / (float) n;
 }

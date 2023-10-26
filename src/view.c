@@ -44,6 +44,8 @@ unsigned *histogram, count;
 
 #define MAP_CLASS(id) (id > 9? id - 10 + 'A' : id + '0')
 
+bignet_ptr model;
+
 main(argc, argv)
 char *argv[];
 {
@@ -102,7 +104,7 @@ char *argv[];
 			fprintf(stderr, "Failed to create directory: views_output\n");
 			return 4;
 		}
-	load_weights(0);
+	model = load_weights("weights", 0);
 	count = 0;
 	for (i=0; i < end; i++)
 		rec_read_file(files[i], cwd, 0);
@@ -198,8 +200,8 @@ char name[];
 			sprintf(view_name + PATH_MAX + NAME_MAX - 5, ".png");
 		write_png(img, view_name);
 	}
-	run(img);
-	hit(-1, &class, &pred);
+	run(model, img);
+	hit(model, -1, &class, &pred);
 	if (flags.histogram)
 		histogram[class]++;
 	if (flags.view) {
@@ -208,7 +210,7 @@ char name[];
 		if (flags.all_prev) {
 			for (j=0; j < MAX_CLASSES; j++) {
 				probs[j].class = MAP_CLASS(j);
-				probs[j].vpred = network_output[j];
+				probs[j].vpred = model->network_output[j];
 			}
 			qsort(probs, MAX_CLASSES, sizeof(struct map_prob), cmp_floats);
 			for (j=0; j < MAX_CLASSES; j++) {
