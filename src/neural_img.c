@@ -152,7 +152,7 @@ float *flat_input, *expected;
 		/*delta*/
 		if (ptrn->out_id == -1)
 			for (i=0; i < ptrl->n; i++)
-				ptrberr[i] = (ptrl->a[i] - expected[i]) * DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
+				ptrberr[i] = ptrl->a[i] - expected[i];
 		else
 			for (i=0; i < ptrl->n; i++)
 				ptrberr[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);

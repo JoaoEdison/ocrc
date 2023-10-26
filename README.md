@@ -42,7 +42,7 @@ The `view.out` program allows you to inspect the network's recognition results. 
 
 The file `weights` was obtained with command:
 ```console
-./training.out 1000 -metric=c -method=a
+./training.out 505 -metric=c -method=a
 ```
 
 ### Quick Test
@@ -54,7 +54,6 @@ sudo apt install libpng-dev
 git clone https://github.com/JoaoEdison/OCRC.git
 cd OCRC/src/
 make
-unzip weights.zip
 ./view.out -d ../test
 ```
 
