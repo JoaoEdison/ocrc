@@ -53,7 +53,6 @@ If you use Ubuntu, try:
 sudo apt install libpng-dev
 git clone https://github.com/JoaoEdison/OCRC.git
 cd OCRC/src/
-make
 ./view.out -d ../test
 ```
 

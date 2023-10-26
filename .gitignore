@@ -5,7 +5,6 @@ views_output
 teste.html
 .*
 *.o
-*.out
 gmon.out
 test_paths
 dataset_paths
