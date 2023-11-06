@@ -17,7 +17,11 @@
 */
 
 #include "neural_img.h"
+
+#include <png.h>
+/*1.6.37*/
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>

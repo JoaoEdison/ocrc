@@ -16,6 +16,13 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <png.h>
+/*1.6.37*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <cblas.h>
+#include <math.h>
+
 #include "neural_img.h"
 
 struct layer {
@@ -513,7 +520,7 @@ char file_name[];
 	
 	if (verbose)
 		printf("Loading weights and biases to the network from: %s...\n", file_name);
-	if (!(fp = fopen(file_name, "r"))) {
+	if (!(fp = fopen(file_name, "rb"))) {
 		fprintf(stderr, "[load_weights] File %s could not be opened for reading\n", file_name);
 		return NULL;
 	}
@@ -540,7 +547,10 @@ char file_name[];
 		free(ptrc->neurons_per_layer);
 	free(nets);
 	for (ptrn=model->arr; ptrn < model->arr + model->num_nets; ptrn++)
-		for (ptrl=ptrn->arr; ptrl < ptrn->arr + ptrn->num_layers; ptrl++)
+		for (ptrl=ptrn->arr; ptrl < ptrn->arr + ptrn->num_layers; ptrl++) {
+			fread(ptrl->w[0], sizeof(float), ptrl->n * ptrl->prev_n, fp);
+			fread(ptrl->b, sizeof(float), ptrl->n, fp);
+			/*
 			for (i=0; i < ptrl->n; i++) {
 				for (j=0; j < ptrl->prev_n; j++)
 					if (fscanf(fp, "%a\n", &ptrl->w[i][j]) != 1) {
@@ -552,6 +562,8 @@ char file_name[];
 					return NULL;
 				}
 			}
+			*/
+		}
 	fclose(fp);
 	if (verbose)
 		puts("Done.");
@@ -565,10 +577,10 @@ char file_name[];
 	FILE *fp;
 	struct net *ptrn;
 	struct layer *ptrl;
-	int i, j, k;
+	int i;
 	
 	puts("Saving network weights and biases to: weights...");
-	if (!(fp = fopen(file_name, "w"))) {
+	if (!(fp = fopen(file_name, "wb"))) {
 		fputs("[save_weights] Could not create network file. Discarding changes made.\n", stderr);
 		return;
 	}
@@ -583,11 +595,15 @@ char file_name[];
 		end_backpr(model);
 	for (ptrn=model->arr; ptrn < model->arr + model->num_nets; ptrn++) {
 		for (i=0, ptrl=ptrn->arr; i < ptrn->num_layers; ptrl++, i++) {
+			fwrite(ptrl->w[0], sizeof(float), ptrl->n * ptrl->prev_n, fp);
+			fwrite(ptrl->b, sizeof(float), ptrl->n, fp);
+			/*
 			for (j=0; j < ptrl->n; j++) {
 				for (k=0; k < ptrl->prev_n; k++)
 					fprintf(fp, "%a\n", ptrl->w[j][k]);
 				fprintf(fp, "%a\n", ptrl->b[j]);
 			}
+			*/
 			free(ptrl->w[0]);
 			free(ptrl->w); free(ptrl->b); free(ptrl->z);
 			if (ptrn->output_original || i < ptrn->num_layers-1)

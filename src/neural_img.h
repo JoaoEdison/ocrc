@@ -16,12 +16,6 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <png.h>
-/*1.6.37*/
-#include <stdlib.h>
-#include <cblas.h>
-#include <math.h>
-
 #define WIDTH 128
 #define HEIGHT 128
 #define POOL_LEN 8

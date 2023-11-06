@@ -17,6 +17,11 @@
 */
 
 #include "neural_img.h"
+
+#include <png.h>
+/*1.6.37*/
+#include <stdlib.h>
+#include <math.h>
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
@@ -38,11 +43,11 @@ char *argv[];
 	
 	if (argc == 1) {
 		puts("Usage: training epochs -metric=accuracy/cross-entropy/none -method=stochastic/batch/all [size]");
-		return 1;
+		return 2;
 	}
 	if (!getcwd(cwd, sizeof(cwd))) {
 		perror("[main] getcwd");
-		return 2;
+		return 1;
 	}
 	method_fn = train_all;
 	metric = NULL;
@@ -69,16 +74,17 @@ char *argv[];
 					puts("Non-existent or unsupported method");
 			} else {
 				printf("training: illegal option %s\n", *argv);
-				return 3;
+				return 2;
 			}
 		} else if (isdigit(*argv[0]))
 			epochs = atoi(*argv);
 		else {
 			printf("training: illegal option %s\n", *argv);
-			return 3;
+			return 2;
 		}
 	}
-	model = load_weights("weights", 1);
+	if (!(model = load_weights("weights", 1)))
+		return 1;	
 	if ((error = train(epochs, method_n, method_fn, metric, "dataset_paths", "test_paths")))
 		return error;
 	save_weights(model, "weights");
