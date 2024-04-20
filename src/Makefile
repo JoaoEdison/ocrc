@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 OPTIMIZATION = -O3
+# In RaspRaspberry Pi O/S or in Debian distros replace -l:libblas.a with -latlas
 CFLAGS = -Wall -Wno-implicit -lm -lpng -l:libblas.a
 
 LIB = neural_img.c
