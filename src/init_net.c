@@ -1,6 +1,6 @@
 /*
  OCRC, a AI for optical character recognition written in C
- Copyright (C) 2023-2023 João Edison Roso Manica
+ Copyright (C) 2023-2025 João E. R. Manica
 
  OCRC is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -31,20 +31,20 @@ unsigned layers3[] = {64, MAX_CLASSES};
      'num_input' determines the number of inputs that net receives.
  *   2) Only one net can serve as the final output (-1) of the network.
  *   3) To specify that a net receives inputs from other nets: 
- *   	  In the 'output' of each net that sends inputs, you must indicate the index of the receiving net.
- *	  The receiving net must set its 'num_input' to the sum of the lasts layers of the source nets.
+ *         In the 'output' of each net that sends inputs, you must indicate the index of the receiving net.
+ *      The receiving net must set its 'num_input' to the sum of the lasts layers of the source nets.
  * */
 create_network_arr nets = {
-	{layers1, sizeof(layers1)/sizeof(unsigned), FEATURE_QTT * AREA_IMG + DIM_POOL * 2, 1,  2},
-	{layers2, sizeof(layers2)/sizeof(unsigned),                                    28, 1,  2},
-	{layers3, sizeof(layers3)/sizeof(unsigned),                            CONNECTION, 0, -1}
+    {layers1, sizeof(layers1)/sizeof(unsigned), FEATURE_QTT * AREA_IMG + DIM_POOL * 2, 1,  2},
+    {layers2, sizeof(layers2)/sizeof(unsigned),                                    28, 1,  2},
+    {layers3, sizeof(layers3)/sizeof(unsigned),                            CONNECTION, 0, -1}
 };
 
 main()
 {
-	bignet_ptr model;
+    bignet_ptr model;
 
-	model = init_net_topology(nets, sizeof(nets)/sizeof(create_network), 1);
-	init_random_weights(model);
-	save_weights(model, "weights");
+    model = init_net_topology(nets, sizeof(nets)/sizeof(create_network), 1);
+    init_random_weights(model);
+    save_weights(model, "weights");
 }
