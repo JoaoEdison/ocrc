@@ -22,27 +22,27 @@ The `weights` file contains pre-trained weights and biases of the neural network
 
 ## Compiling
 
-Run makefile in `src` folder. You will get three executable codes:
+Run makefile in `src` folder. You will get three executables:
 
-* `init_net.out`: this generates the raw neural network.
+* `init_net`: this generates the raw neural network.
 
-* `training.out`: the training program.
+* `training`: the training program.
 
-* `view.out`: a program to view the results.
+* `view`: a program to view the results.
 
 These programs look for the `weights` file in the current working directory to save and load the neural network.
 
 ## Usage
 
-To configure the neural network format, modify the `init_net.c` and recompile it using the make command. After recompiling, execute `init_net.out` to generate the raw network, wich will be saved in `weights` (WARNING: running the program will overwrites `weights` on every call). Alternatively, you can use the provided pre-trained `weights`.
+To configure the neural network format, modify `model.h`, `model.c` or `init_net.c` and recompile it using the make command. After recompiling, execute `init_net` to generate the raw network, wich will be saved in `weights` (WARNING: running this program will overwrites `weights` on every call). Alternatively, you can use the provided pre-trained `weights`.
 
-`training.out` offers several training options. Please feel free to exlore and experiment with them. To use the program, create two files: `dataset_paths` and `test_paths`. In the `dataset_paths` file, specify the absolute paths to the training directories, one path per line, corresponding to each class. Do the same for `test_paths`, where paths are to test directories. Ensure that these files have read permissions.
+`training` offers several training options. Please feel free to exlore and experiment with them. To use the program, create two files where it executes: `dataset_paths` and `test_paths`. In the `dataset_paths` file, specify the absolute paths to the training directories, one path per line, corresponding to each class. Do the same for `test_paths`, where paths are to test directories. Ensure that these files have read permissions.
 
-The `view.out` program allows you to inspect the network's recognition results. It also offers various options for visualization.
+The `view` program allows you to inspect the network's recognition results. It also offers various options for visualization.
 
 The file `weights` was obtained with command:
 ```console
-./training.out 505 -metric=c -method=a
+./training 505 -metric=c -method=a
 ```
 
 ### Quick Test
@@ -53,7 +53,8 @@ If you use Ubuntu, try:
 sudo apt install libpng-dev
 git clone https://github.com/JoaoEdison/OCRC.git
 cd OCRC/src/
-./view.out -d ../test
+make
+./build/view -d ../test
 ```
 
 ## License
