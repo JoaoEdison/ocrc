@@ -16,7 +16,9 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "neural_img.h"
+#include "neural_net.h"
+#include "vision.h"
+#include "model.h"
 
 #include <png.h>
 /*1.6.37*/
@@ -49,7 +51,7 @@ unsigned *histogram, count;
 
 #define MAP_CLASS(id) (id > 9? id - 10 + 'A' : id + '0')
 
-bignet_ptr model;
+neural_net_bignet_ptr model;
 
 main(argc, argv)
 char *argv[];
@@ -109,8 +111,9 @@ char *argv[];
             fprintf(stderr, "Failed to create directory: views_output\n");
             return 4;
         }
-    model = load_weights("weights", 0);
+    model = neural_net_load_weights("weights", 0);
     count = 0;
+    config_vision();
     for (i=0; i < end; i++)
         rec_read_file(files[i], cwd, 0);
     free(files);
@@ -205,8 +208,8 @@ char name[];
             sprintf(view_name + PATH_MAX + NAME_MAX - 5, ".png");
         write_png(img, view_name);
     }
-    run(model, img);
-    hit(model, -1, &class, &pred);
+    neural_net_run(model, img);
+    neural_net_hit(model, -1, &class, &pred);
     if (flags.histogram)
         histogram[class]++;
     if (flags.view) {
@@ -243,7 +246,9 @@ char name[];
     png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     info = png_create_info_struct(png);
     png_init_io(png, fp);
-    png_set_IHDR(png, info, FEATURE_QTT * DIM_IMGL, DIM_IMGL, 8, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_ADAM7, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_set_IHDR(png, info, FEATURE_QTT * DIM_IMGL, DIM_IMGL, 8,
+                 PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_ADAM7,
+                 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     png_write_info(png, info);
     rows = (png_bytepp) malloc(sizeof(png_bytep) * DIM_IMGL);
     for (i=0; i < DIM_IMGL; i++)

@@ -1,22 +1,23 @@
 /*
- OCRC, a AI for optical character recognition written in C
- Copyright (C) 2023-2025 João E. R. Manica
-
- OCRC is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- OCRC is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    OCRC, a AI for optical character recognition written in C
+    Copyright (C) 2023-2025 João E. R. Manica
+    
+    OCRC is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    
+    OCRC is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "neural_img.h"
+#include "neural_net.h"
+#include "model.h"
 
 #include <png.h>
 /*1.6.37*/
@@ -28,12 +29,11 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <linux/limits.h>
-#define _DEFAULT_SOURCE
 #include <dirent.h>
 
 char cwd[PATH_MAX];
 
-bignet_ptr model;
+neural_net_bignet_ptr model;
 
 main(argc, argv)
 char *argv[];
@@ -59,9 +59,9 @@ char *argv[];
             ptrc = *argv + 8;
             if (!strncmp(*argv, "-metric=", 8)) {
                 if (!(strcmp("accuracy", ptrc) && strcmp("a", ptrc)))
-                    metric = hit;
+                    metric = neural_net_hit;
                 else if (!(strcmp("cross-entropy", ptrc) && strcmp("cross", ptrc) && strcmp("c", ptrc)))
-                    metric = cross_entropy;
+                    metric = neural_net_cross_entropy;
                 else if (strcmp("none", ptrc) && strcmp("n", ptrc))
                     puts("Non-existent or unsupported metric");
             } else if (!strncmp(*argv, "-method=", 8)) {
@@ -85,11 +85,11 @@ char *argv[];
             return 2;
         }
     }
-    if (!(model = load_weights("weights", 1)))
+    if (!(model = neural_net_load_weights("weights", 1)))
         return 1;    
     if ((error = train(epochs, method_n, method_fn, metric, "dataset_paths", "test_paths")))
         return error;
-    save_weights(model, "weights");
+    neural_net_save_weights(model, "weights");
     return 0;
 }
 
@@ -110,7 +110,7 @@ struct vector_view train[];
     for (i=0; i < MAX_CLASSES;) {
         expected[i] = 1.0f;
         for (j=0; j < train[i].end; j++)
-            backpr(model, train[i].arr[j], expected);
+            neural_net_backpr(model, train[i].arr[j], expected);
         expected[i++] = 0.0f;
     }
 }
@@ -126,7 +126,7 @@ struct vector_view train[];
     expected[(i = rand() % MAX_CLASSES)] = 1.0f;
     ptrv = &train[i];
     j = rand() % ptrv->end;
-    backpr(model, ptrv->arr[j], expected);
+    neural_net_backpr(model, ptrv->arr[j], expected);
 }
 
 int batch_size;
@@ -221,6 +221,8 @@ char fname_training[], fname_test[];
     struct timeval begin, end;
     pthread_t tid;
     
+    config_vision();
+
     printf("Reading images of training set %s...\n", fname_training);
     if ((error = read_paths(fname_training, &train_count, train_views)))
         return error;
@@ -239,14 +241,14 @@ char fname_training[], fname_test[];
     else
         srand(time(NULL));
     batch_size = method_n;
-    ini_backpr(model, method_n);
+    neural_net_ini_backpr(model, method_n);
     pthread_mutex_init(&mutex, NULL);
     pthread_create(&tid, NULL, stop_training, NULL);
     gettimeofday(&begin, 0);
     for (i=0; i < epochs; i++) {
-        clear_backpr(model);
+        neural_net_clear_backpr(model);
         method_fn(train_views);
-        apply_backpr(model);
+        neural_net_apply_backpr(model);
         if ((metric_fn && method_n != 1) || (metric_fn && i % CLOCK == 0))
             printf("%.3f (test) %.3f (training) [%d/%d]\n", avg(metric_fn, test_count, test_views), avg(metric_fn, train_count, train_views), i+1, epochs);
         if (state != 's')
@@ -266,7 +268,7 @@ char fname_training[], fname_test[];
     pthread_join(tid, NULL);
     pthread_mutex_unlock(&mutex);
     pthread_mutex_destroy(&mutex);
-    end_backpr(model);
+    neural_net_end_backpr(model);
     for (i=0; i < MAX_CLASSES; i++) {
         for (j=0; j < test_views[i].end; j++)
             free(test_views[i].arr[j]);
@@ -287,7 +289,7 @@ struct vector_view views[];
     
     for (sum=i=0; i < MAX_CLASSES; i++)
         for (j=0; j < views[i].end; j++) {
-            run(model, views[i].arr[j]);
+            neural_net_run(model, views[i].arr[j]);
             sum += metric_fn(model, i, NULL, NULL);
         }
     return sum / (float) n;

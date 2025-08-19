@@ -1,22 +1,23 @@
 /*
- OCRC, a AI for optical character recognition written in C
- Copyright (C) 2023-2025 João E. R. Manica
-
- OCRC is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- OCRC is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    OCRC, a AI for optical character recognition written in C
+    Copyright (C) 2023-2025 João E. R. Manica
+    
+    OCRC is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    
+    OCRC is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "neural_img.h"
+#include "neural_net.h"
+#include "model.h"
 
 #define END_LAYER_1 64
 #define END_LAYER_2 28
@@ -34,7 +35,7 @@ unsigned layers3[] = {64, MAX_CLASSES};
  *         In the 'output' of each net that sends inputs, you must indicate the index of the receiving net.
  *      The receiving net must set its 'num_input' to the sum of the lasts layers of the source nets.
  * */
-create_network_arr nets = {
+neural_net_create_network_arr nets = {
     {layers1, sizeof(layers1)/sizeof(unsigned), FEATURE_QTT * AREA_IMG + DIM_POOL * 2, 1,  2},
     {layers2, sizeof(layers2)/sizeof(unsigned),                                    28, 1,  2},
     {layers3, sizeof(layers3)/sizeof(unsigned),                            CONNECTION, 0, -1}
@@ -42,9 +43,9 @@ create_network_arr nets = {
 
 main()
 {
-    bignet_ptr model;
+    neural_net_bignet_ptr model;
 
-    model = init_net_topology(nets, sizeof(nets)/sizeof(create_network), 1);
-    init_random_weights(model);
-    save_weights(model, "weights");
+    model = neural_net_init_net_topology(nets, sizeof(nets)/sizeof(neural_net_create_network), 1);
+    neural_net_init_random_weights(model);
+    neural_net_save_weights(model, "weights");
 }

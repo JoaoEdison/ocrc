@@ -1,5 +1,5 @@
 # OCRC, a AI for optical character recognition written in C
-# Copyright (C) 2023-2023 João Edison Roso Manica
+# Copyright (C) 2023-2025 João Edison Roso Manica
 #
 # OCRC is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,33 +14,41 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-OPTIMIZATION = -O3
+OPTIMIZATION =
 # In RaspRaspberry Pi O/S or in Debian distros replace -l:libblas.a with -latlas
-CFLAGS = -Wall -Wno-implicit -lm -lpng -l:libblas.a
+CFLAGS = -Wall -Wno-implicit -lm -lpng -l:libblas.a -g
 
-LIB = neural_img.c
-LIB_H = neural_img.h
-LIB_OBJECT = $(LIB:.c=.o)
+BUILD_DIR := ./build
 
-PROGRAM1 = view.out
-PROGRAM1_SOURCE = view.c
+vision_lib := $(BUILD_DIR)/lib/vision.o
+neural_net_lib := $(BUILD_DIR)/lib/neural_net.o
+model_obj := $(BUILD_DIR)/lib/model_obj.o
 
-PROGRAM2 = init_net.out
-PROGRAM2_SOURCE = init_net.c
+PROGRAMS := view init_net training
+BINS := $(PROGRAMS:%=$(BUILD_DIR)/%)
 
-PROGRAM3 = training.out
-PROGRAM3_SOURCE = training.c
+all: $(vision_lib) $(neural_net_lib) $(model_obj) $(BINS)
 
-all: $(PROGRAM1) $(PROGRAM2) $(PROGRAM3)
+$(vision_lib): vision.c
+	mkdir -p $(BUILD_DIR)/lib
+	gcc -c $< -o $@ -Wall -Wno-implicit $(OPTIMIZATION) -g
+$(neural_net_lib): neural_net.c
+	mkdir -p $(BUILD_DIR)/lib
+	gcc -c $< -o $@ -Wall -Wno-implicit $(OPTIMIZATION) -g
+$(model_obj): model.c
+	mkdir -p $(BUILD_DIR)/lib
+	gcc -c $< -o $@ -Wall -Wno-implicit $(OPTIMIZATION) -g
 
-$(LIB_OBJECT): $(LIB) $(LIB_H)
-	gcc -c $(LIB) -Wall -Wno-implicit -Wno-multistatement-macros $(OPTIMIZATION)
+$(BUILD_DIR)/init_net: init_net.c $(neural_net_lib)
+	mkdir -p $(BUILD_DIR)
+	$(CC) $^ -o $@ $(CFLAGS) $(OPTIMIZATION)
 
-$(PROGRAM1): $(LIB_OBJECT) $(PROGRAM1_SOURCE)
-	gcc $(PROGRAM1_SOURCE) $(LIB_OBJECT) -o $(PROGRAM1) $(CFLAGS) $(OPTIMIZATION)
+$(BUILD_DIR)/view: view.c $(neural_net_lib) $(vision_lib) $(model_obj)
+	mkdir -p $(BUILD_DIR)
+	$(CC) $^ -o $@ $(CFLAGS) $(OPTIMIZATION)
+$(BUILD_DIR)/training: training.c $(neural_net_lib) $(vision_lib) $(model_obj)
+	mkdir -p $(BUILD_DIR)
+	$(CC) $^ -o $@ $(CFLAGS) $(OPTIMIZATION) -lpthread
 
-$(PROGRAM2): $(LIB_OBJECT) $(PROGRAM2_SOURCE)
-	gcc $(PROGRAM2_SOURCE) $(LIB_OBJECT) -o $(PROGRAM2) $(CFLAGS) $(OPTIMIZATION)
-
-$(PROGRAM3): $(LIB_OBJECT) $(PROGRAM3_SOURCE)
-	gcc $(PROGRAM3_SOURCE) $(LIB_OBJECT) -o $(PROGRAM3) $(CFLAGS) -lpthread $(OPTIMIZATION)
+clean:
+	rm -rd $(BUILD_DIR)

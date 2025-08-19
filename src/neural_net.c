@@ -1,29 +1,28 @@
 /*
- OCRC, a AI for optical character recognition written in C
- Copyright (C) 2023-2025 João E. R. Manica
-
- OCRC is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- OCRC is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    OCRC, a AI for optical character recognition written in C
+    Copyright (C) 2023-2025 João E. R. Manica
+    
+    OCRC is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    
+    OCRC is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <png.h>
-/*1.6.37*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <cblas.h>
 #include <math.h>
 
-#include "neural_img.h"
+#include "neural_net.h"
+#include "model.h"
 
 typedef struct {
     float **w, *b, *z, *a;
@@ -40,13 +39,12 @@ typedef struct net {
     short out_id;
 } net;
 
-void run(model, flat_input)
-bignet_ptr model;
+void neural_net_run(model, flat_input)
+neural_net_bignet_ptr model;
 float *flat_input;
 {
     net *ptrn;
     layer *ptrl;
-    float sum;
     int i;
 
     for (ptrn=model->arr; ptrn < model->arr + model->num_nets; ptrn++) {
@@ -69,12 +67,7 @@ float *flat_input;
             for (i=0; i < ptrl->n; i++)
                 ptrl->z[i] += ptrl->b[i];
             if (ptrl->a == model->network_output) {
-                for (sum=i=0; i < ptrl->n; i++) {
-                    ptrl->a[i] = exp(ptrl->z[i]);
-                    sum += ptrl->a[i]; 
-                }
-                for (i=0; i < ptrl->n; i++)
-                    ptrl->a[i] /= sum;
+                LAST_ACTIVATION_FN;
             } else
                 for (i=0; i < ptrl->n; i++)
                     ptrl->a[i] = ACTIVATION_FN(ptrl->z[i]);
@@ -82,8 +75,8 @@ float *flat_input;
     }
 }
 
-void ini_backpr(model, n)
-bignet_ptr model;
+void neural_net_ini_backpr(model, n)
+neural_net_bignet_ptr model;
 {
     net *ptrn;
     layer *ptrl;
@@ -108,8 +101,8 @@ bignet_ptr model;
     model->back_on = 1;
 }
 
-void end_backpr(model)
-bignet_ptr model;
+void neural_net_end_backpr(model)
+neural_net_bignet_ptr model;
 {
     net *ptrn;
     layer *ptrl;
@@ -124,8 +117,8 @@ bignet_ptr model;
     model->back_on = 0;
 }
 
-void clear_backpr(model)
-bignet_ptr model;
+void neural_net_clear_backpr(model)
+neural_net_bignet_ptr model;
 {
     net *ptrn;
     layer *ptrl;
@@ -140,8 +133,10 @@ bignet_ptr model;
             }
 }
 
-void backpr(model, flat_input, expected)
-bignet_ptr model;
+/* Here are used the derivative of cost function with respect to a*/
+/* and multiply by the derivative of activation function */
+void neural_net_backpr(model, flat_input, expected)
+neural_net_bignet_ptr model;
 float *flat_input, *expected;
 {
     net *ptrn, *ptrn_prev;
@@ -149,7 +144,7 @@ float *flat_input, *expected;
     float *ptrberr;
     int i, next_col;
     
-    run(model, flat_input);
+    neural_net_run(model, flat_input);
     /*begins in the last inputs, because is being traversed backwards*/    
     flat_input += INPUT_QTT;
     next_col = 0;    
@@ -158,8 +153,10 @@ float *flat_input, *expected;
         ptrberr = model->N > 1? ptrl->aux_b : ptrl->err_b;
         /*delta*/
         if (ptrn->out_id == -1)
-            for (i=0; i < ptrl->n; i++)
+            for (i=0; i < ptrl->n; i++) {
+                /* ptrberr[i] = expected[i]? ptrl->a[i] - 1 : ptrl->a[i]; */
                 ptrberr[i] = ptrl->a[i] - expected[i];
+            }
         else
             for (i=0; i < ptrl->n; i++)
                 ptrberr[i] *= DERIVATIVE_ACTIVATION_FN(ptrl->z[i]);
@@ -198,8 +195,8 @@ float *flat_input, *expected;
 
 #define NEW_CHANGE(ERR, CHA) ERR * RATE + MOMENTUM * CHA
 
-void apply_backpr(model)
-bignet_ptr model;
+void neural_net_apply_backpr(model)
+neural_net_bignet_ptr model;
 {
     net *ptrn;
     layer *ptrl;
@@ -220,229 +217,26 @@ bignet_ptr model;
             }
 }
 
-#define WHITER 0.5
-#define FIND_EDGES \
-            if (img_in[i * dim_in + j] > WHITER) { \
-                points[k][0] = i; points[k][1] = j; \
-                k++; \
-                found = 1; \
-                break; \
-            } \
-        if (found) { \
-            found = 0; \
-            break; \
-        } \
-    }
-
-/* Gets this points, calculates the Manhattan distances beetween
-   and divides by the main diagonal. Stores it in the end of img_view.
- *          57
- *          ||
- *          vv
- *      1-> /\ <-2
- *         /  \
- *        /    \
- *       /------\
- *      /        \
- * 3-> /          \ <-4
- *     ^          ^
- *     |          |
- *     6          8
- * Sum the cols, make the mean. Sum the rows, make the mean.
- * Stores both after the images area (FEATURE_QTT * AREA_IMG).
- * */
-static void metadata(img_view, img_in, dim_in)
-float *img_view, *img_in;
-{
-    static points[8][2];
-    int i, j, k, found;
-    
-    k = found = 0;
-    /*1*/
-    for (i=0; i < dim_in; i++) {
-        for (j=0; j < dim_in; j++)
-            FIND_EDGES
-    /*2*/
-    for (i=0; i < dim_in; i++) {
-        for (j=dim_in-1; j >= 0; j--)
-            FIND_EDGES
-    /*3*/
-    for (i=dim_in-1; i >= 0; i--) {
-        for (j=0; j < dim_in; j++)
-            FIND_EDGES
-    /*4*/
-    for (i=dim_in-1; i >= 0; i--) {
-        for (j=dim_in-1; j >= 0; j--)
-            FIND_EDGES
-    /*5*/
-    for (j=0; j < dim_in; j++) {
-        for (i=0; i < dim_in; i++)
-            FIND_EDGES
-    /*6*/
-    for (j=0; j < dim_in; j++) {
-        for (i=dim_in-1; i >= 0; i--)
-            FIND_EDGES
-    /*7*/
-    for (j=dim_in-1; j >= 0; j--) {
-        for (i=0; i < dim_in; i++)
-            FIND_EDGES
-    /*8*/
-    for (j=dim_in-1; j >= 0; j--) {
-        for (i=dim_in-1; i >= 0; i--)
-            FIND_EDGES
-    k = FEATURE_QTT * AREA_IMG;
-    for (i=0; i < dim_in; i++) {
-        img_view[k] = 0;
-        for (j=0; j < dim_in; j++)
-            img_view[k] += img_in[i * dim_in + j];
-        img_view[k] /= dim_in;
-        k++;
-    }
-    for (j=0; j < dim_in; j++) {
-        img_view[k] = 0;
-        for (i=0; i < dim_in; i++)
-            img_view[k] += img_in[i * dim_in + j];
-        img_view[k] /= dim_in;
-        k++;
-    }
-    for (i=0; i < 8; i++)
-        for (j=i+1; j < 8; j++)
-            img_view[k++] = (abs(points[i][0] - points[j][0]) + abs(points[i][1] - points[j][1])) / (dim_in * 2.0);
-}
-
-static float blur_k[3][3] = {
-    {0.0625, 0.125, 0.0625},
-    {0.125 , 0.25 , 0.125},
-    {0.0625, 0.125, 0.0625}
-};
-
-static void convolution(img_view, in_view, kernel, dim_in, dim_out)
-float *img_view, *in_view;
-float kernel[][3];
-{
-    int i, j, k, l;
-    float counter;
-    
-    for (i=1; i < dim_in-1; i++)
-        for (j=1; j < dim_in-1; j++) {
-            counter = 0;
-            for (k=0; k < 3; k++)
-                for (l=0; l < 3; l++)
-                    counter += in_view[(i-1+k) * dim_in + (j-1+l)] * kernel[k][l];
-            img_view[(i-1) * dim_out + (j-1)] = counter;
-        }
-}
-
-#define END png_destroy_read_struct(&png, &info, NULL); fclose(fp);
-
-read_png_file(name, img_view, verbose)
-char name[];
-float *img_view;
-{
-    static float img[PIXEL_QTT];
-    static unsigned char header[8];
-    FILE *fp;
-    png_structp png;
-    png_infop info;
-    png_bytepp rows;
-    png_byte color_type;
-    int height;
-    int i, j, k, l;
-    float sum;
-
-    if (!img_view) {
-        fputs("[read_png_file] null image array\n", stderr);
-        return 1;
-    }
-    if (!(fp = fopen(name, "rb"))) {
-        fprintf(stderr, "[read_png_file] File %s could not be opened for reading\n", name);
-        return 2;
-    }
-    if (fread(header, 1, 8, fp) != 8) {
-        fputs("[read_png_file] Header reading error\n", stderr);
-        return 3;
-    }
-    if (png_sig_cmp(header, 0, 8)) {
-        fprintf(stderr, "[read_png_file] File %s is not recognized as a PNG image\n", name);
-        return 4;
-    }
-    if (!(png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL))) {
-        END
-        fputs("[read_png_file] png_create_read_struct failed\n", stderr);
-        return 5;
-    }
-    if (!(info = png_create_info_struct(png))) {
-        END
-        fputs("[read_png_file] png_create_info_struct failed\n", stderr);
-        return 6;
-    }
-    if (setjmp(png_jmpbuf(png))) {
-        END
-        fputs("[read_png_file] init_io failed\n", stderr);
-        return 7;
-    }
-    png_init_io(png, fp);
-    png_set_sig_bytes(png, 8);
-    png_read_info(png, info);
-    height = png_get_image_height(png, info);
-    color_type = png_get_color_type(png, info);
-    if (verbose)
-        printf("WIDTH: %d HEIGHT: %d COLOR_TYPE: %d BIT_DEPTH: %d INTERLACE_HANDLING: %d\n", png_get_image_width(png, info),
-                                                                                         height,
-                                                                                         color_type,
-                                                                                         png_get_bit_depth(png, info),
-                                                                                         png_set_interlace_handling(png));
-    if (color_type == PNG_COLOR_TYPE_PALETTE) {
-        png_set_palette_to_rgb(png);
-        png_set_rgb_to_gray(png, 1, 0, 0);
-    }
-    png_read_update_info(png, info);
-    if (setjmp(png_jmpbuf(png))) {
-        END
-        fputs("[read_png_file] read_image failed\n", stderr);
-        return 8;
-    }
-    rows = (png_bytepp) malloc(sizeof(png_bytep) * height);
-    for (i=0; i < height; i++)
-        rows[i] = (png_bytep) malloc(png_get_rowbytes(png, info));
-    png_read_image(png, rows);
-    for (i=0; i < DIM_POOL; i++) 
-        for (j=0; j < DIM_POOL; j++) {
-            sum = 0;
-            for (k=0; k < POOL_LEN; k++)
-                for (l=0; l < POOL_LEN; l++)
-                    sum += rows[i * POOL_LEN + k][j * POOL_LEN + l];
-            img[i * DIM_POOL + j] = 1 - sum / (POOL_LEN * POOL_LEN) / 255;
-        }
-    for (i=0; i < height; i++)
-        free(rows[i]);
-    free(rows);
-    END
-    metadata(img_view, img, DIM_POOL);
-    convolution(img_view, img, blur_k, DIM_POOL, DIM_IMG1);
-    return 0;
-}
-
 #define FLOAT_RANDOM_WEIGHT ((float)rand() / RAND_MAX - 0.5)
 #define FLOAT_RANDOM_BIAS (FLOAT_RANDOM_WEIGHT * 2)
 
-bignet_ptr init_net_topology(nets, n, verbose)
-create_network_arr nets;
+neural_net_bignet_ptr neural_net_init_net_topology(nets, n, verbose)
+neural_net_create_network_arr nets;
 {
     net *ptrn;
-    create_network_ptr ptrc;
+    neural_net_create_network_ptr ptrc;
     int i, j, k;
     long unsigned *amount;
-    bignet_ptr model;
+    neural_net_bignet_ptr model;
     
-    model = malloc(sizeof(bignet));
+    model = malloc(sizeof(neural_net_bignet));
     model->num_nets = n;
     model->back_on = 0;
     if (verbose)
         puts("Allocating memory to the neural network...");
     model->arr = malloc(sizeof(net) * model->num_nets);
     amount = calloc(model->num_nets, sizeof(long unsigned));
-    // for each network
+    /* for each network */
     for (ptrn=model->arr, ptrc=nets; ptrn < model->arr + model->num_nets; ptrn++, ptrc++) {
         ptrn->num_layers = ptrc->num_layers;
         ptrn->arr = malloc(sizeof(layer) * ptrc->num_layers);
@@ -491,8 +285,8 @@ create_network_arr nets;
     return model;
 }
 
-void init_random_weights(model)
-bignet_ptr model;
+void neural_net_init_random_weights(model)
+neural_net_bignet_ptr model;
 {
     net *ptrn;
     layer *ptrl;
@@ -508,15 +302,15 @@ bignet_ptr model;
     }
 }
 
-bignet_ptr load_weights(file_name, verbose)
+neural_net_bignet_ptr neural_net_load_weights(file_name, verbose)
 char file_name[];
 {
     FILE *fp;
     int i, j;
-    create_network_ptr nets, ptrc;
+    neural_net_create_network_ptr nets, ptrc;
     net *ptrn;
     layer *ptrl;
-    bignet_ptr model;
+    neural_net_bignet_ptr model;
     
     if (verbose)
         printf("Loading weights and biases to the network from: %s...\n", file_name);
@@ -528,7 +322,7 @@ char file_name[];
         fputs("[load_weights] Unable to read the number of networks\n", stderr);
         return NULL;
     }
-    nets = malloc(sizeof(create_network) * i);
+    nets = malloc(sizeof(neural_net_create_network) * i);
     for (ptrc=nets; ptrc < nets + i; ptrc++) {
         if (fscanf(fp, "%x %hhx %hd %x", &ptrc->num_layers, &ptrc->source, &ptrc->output, &ptrc->num_input) != 4) {
             fputs("[load_weights] Unable to read network info\n", stderr);
@@ -542,7 +336,7 @@ char file_name[];
             }
         fgetc(fp);
     }
-    model = init_net_topology(nets, i, verbose);
+    model = neural_net_init_net_topology(nets, i, verbose);
     for (ptrc=nets; ptrc < nets + i; ptrc++)
         free(ptrc->neurons_per_layer);
     free(nets);
@@ -570,8 +364,8 @@ char file_name[];
     return model;
 }
 
-void save_weights(model, file_name)
-bignet_ptr model;
+void neural_net_save_weights(model, file_name)
+neural_net_bignet_ptr model;
 char file_name[];
 {
     FILE *fp;
@@ -592,7 +386,7 @@ char file_name[];
         fputc('\n', fp);
     }
     if (model->back_on)
-        end_backpr(model);
+        neural_net_end_backpr(model);
     for (ptrn=model->arr; ptrn < model->arr + model->num_nets; ptrn++) {
         for (i=0, ptrl=ptrn->arr; i < ptrn->num_layers; ptrl++, i++) {
             fwrite(ptrl->w[0], sizeof(float), ptrl->n * ptrl->prev_n, fp);
@@ -615,8 +409,8 @@ char file_name[];
     puts("Done.");
 }
 
-float hit(model, class, predi, predv)
-bignet_ptr model;
+float neural_net_hit(model, class, predi, predv)
+neural_net_bignet_ptr model;
 int *predi;
 float *predv;
 {
@@ -637,8 +431,8 @@ float *predv;
     return class == bigi;
 }
 
-float cross_entropy(model, class)
-bignet_ptr model;
+float neural_net_cross_entropy(model, class)
+neural_net_bignet_ptr model;
 {
     int i;
     float c;
