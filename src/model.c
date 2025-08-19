@@ -127,6 +127,14 @@ void config_vision()
 
 #define END png_destroy_read_struct(&png, &info, NULL); fclose(fp);
 
+/* read_png_file:
+ *     Reads 'name' using fopen and verifies if it is a PNG file.
+ *     The function applies convolution to the image and extracts metadata.
+ *     Returns 0 if the file is successfully read and the output is stored in 'img_view'.
+ *     Else returns an error value and prints an error message.
+ *     If 'verbose' is not zero, it displays the characteristics of the file. 
+ *     'img_view' should have a length of INPUT_QTT.
+ * */
 read_png_file(name, img_view, verbose)
 char name[];
 float *img_view;
