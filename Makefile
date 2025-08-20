@@ -29,24 +29,24 @@ BINS := $(PROGRAMS:%=$(BUILD_DIR)/%)
 
 all: $(vision_lib) $(neural_net_lib) $(model_obj) $(BINS)
 
-$(vision_lib): vision.c
+$(vision_lib): src/vision.c
 	mkdir -p $(BUILD_DIR)/lib
 	gcc -c $< -o $@ -Wall -Wno-implicit $(OPTIMIZATION) -g
-$(neural_net_lib): neural_net.c
+$(neural_net_lib): src/neural_net.c
 	mkdir -p $(BUILD_DIR)/lib
 	gcc -c $< -o $@ -Wall -Wno-implicit $(OPTIMIZATION) -g
-$(model_obj): model.c
+$(model_obj): src/model.c
 	mkdir -p $(BUILD_DIR)/lib
 	gcc -c $< -o $@ -Wall -Wno-implicit $(OPTIMIZATION) -g
 
-$(BUILD_DIR)/init_net: init_net.c $(neural_net_lib)
+$(BUILD_DIR)/init_net: src/init_net.c $(neural_net_lib)
 	mkdir -p $(BUILD_DIR)
 	$(CC) $^ -o $@ $(CFLAGS) $(OPTIMIZATION)
 
-$(BUILD_DIR)/view: view.c $(neural_net_lib) $(vision_lib) $(model_obj)
+$(BUILD_DIR)/view: src/view.c $(neural_net_lib) $(vision_lib) $(model_obj)
 	mkdir -p $(BUILD_DIR)
 	$(CC) $^ -o $@ $(CFLAGS) $(OPTIMIZATION)
-$(BUILD_DIR)/training: training.c $(neural_net_lib) $(vision_lib) $(model_obj)
+$(BUILD_DIR)/training: src/training.c $(neural_net_lib) $(vision_lib) $(model_obj)
 	mkdir -p $(BUILD_DIR)
 	$(CC) $^ -o $@ $(CFLAGS) $(OPTIMIZATION) -lpthread
 

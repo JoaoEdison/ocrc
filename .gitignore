@@ -9,4 +9,4 @@ gmon.out
 test_paths
 dataset_paths
 test.png
-src/build/
+build/

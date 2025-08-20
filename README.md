@@ -40,9 +40,10 @@ To configure the neural network format, modify `model.h`, `model.c` or `init_net
 
 The `view` program allows you to inspect the network's recognition results. It also offers various options for visualization.
 
-The file `weights` was obtained with command:
+The file `weights` was obtained with the commands:
 ```console
-./training 505 -metric=c -method=a
+./build/init_net
+./build/training 505 -metric=c -method=a
 ```
 
 ### Quick Test
@@ -52,9 +53,8 @@ If you use Ubuntu, try:
 ```console
 sudo apt install libpng-dev
 git clone https://github.com/JoaoEdison/OCRC.git
-cd OCRC/src/
 make
-./build/view -d ../test
+./build/view -d test
 ```
 
 ## License
